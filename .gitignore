@@ -1,0 +1,36 @@
+# Dependências
+node_modules/
+
+# Build/output (WXT/Vite)
+.output/
+.wxt/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Variáveis de ambiente
+.env
+.env.*
+!.env.example
+
+# Cache/temporários
+.cache/
+.vite/
+coverage/
+tmp/
+temp/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
