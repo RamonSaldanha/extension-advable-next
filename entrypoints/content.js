@@ -82,46 +82,55 @@ export default defineContentScript({
     // Evita duplicação do ícone
     if (document.getElementById('advable-floating-icon')) return;
 
-    // === Cria o ícone flutuante ===
+    // === Cria o botão flutuante (FAB circular fixo) ===
     const floatingIcon = document.createElement('div');
     floatingIcon.id = 'advable-floating-icon';
 
     floatingIcon.innerHTML = `
-      <img src="${browser.runtime.getURL('/icon16.png')}" alt="Advable Icon" style="margin-right: 5px;" />
-      <span id="advable-text" style="display: none;">Assistente</span>
+      <img src="${browser.runtime.getURL('/icon48.png')}" alt="Advable" style="width: 28px; height: 28px; display: block; pointer-events: none;" />
     `;
 
     Object.assign(floatingIcon.style, {
       all: 'unset',
       position: 'fixed',
-      bottom: '25%',
-      right: '0',
-      width: '30px',
-      backgroundColor: '#FFF',
-      zIndex: '9999',
+      bottom: '24px',
+      right: '24px',
+      width: '56px',
+      height: '56px',
+      boxSizing: 'border-box',
+      backgroundColor: '#FFFFFF',
+      zIndex: '2147483646',
       cursor: 'pointer',
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: '8px 0 0 8px',
-      transition: 'width 0.3s ease-in-out',
-      padding: '10px',
-      fontFamily: 'Arial, sans-serif',
-      fontSize: '14px',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+      borderRadius: '50%',
+      border: '1px solid rgba(50, 45, 120, 0.12)',
+      boxShadow: '0 6px 20px rgba(50, 45, 120, 0.35)',
+      transition: 'box-shadow 0.18s ease',
     });
 
-    // Botão para remover o ícone flutuante
+    // Botão para esconder o FAB (aparece apenas no hover)
     const hideButton = document.createElement('span');
-    hideButton.textContent = 'X';
+    hideButton.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16">
+        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+      </svg>
+    `;
     Object.assign(hideButton.style, {
       position: 'absolute',
-      top: '0',
-      right: '0',
+      top: '-2px',
+      right: '-2px',
+      width: '18px',
+      height: '18px',
+      borderRadius: '50%',
+      backgroundColor: '#322d78',
+      color: '#FFFFFF',
       cursor: 'pointer',
-      color: '#333',
-      fontSize: '12px',
-      padding: '2px',
+      display: 'none',
+      justifyContent: 'center',
+      alignItems: 'center',
+      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
     });
     floatingIcon.appendChild(hideButton);
     hideButton.addEventListener('click', (event) => {
@@ -129,51 +138,23 @@ export default defineContentScript({
       floatingIcon.style.display = 'none';
     });
 
-    // Efeito de hover
+    // Efeito de hover (apenas realça a sombra e revela o "x") — sem escalar a logo
     floatingIcon.addEventListener('mouseover', () => {
-      floatingIcon.style.width = '100px';
-      document.getElementById('advable-text').style.display = 'inline';
+      floatingIcon.style.boxShadow = '0 12px 32px rgba(50, 45, 120, 0.5)';
+      hideButton.style.display = 'flex';
     });
 
     floatingIcon.addEventListener('mouseout', () => {
-      floatingIcon.style.width = '30px';
-      document.getElementById('advable-text').style.display = 'none';
+      floatingIcon.style.boxShadow = '0 6px 20px rgba(50, 45, 120, 0.35)';
+      hideButton.style.display = 'none';
     });
 
     document.body.appendChild(floatingIcon);
 
-    // Restaura posição salva
-    const savedPosition = localStorage.getItem('advableIconPosition');
-    if (savedPosition) {
-      floatingIcon.style.bottom = savedPosition;
-    }
-
-    // Permite arrastar o ícone verticalmente
-    let isDragging = false;
-    floatingIcon.addEventListener('mousedown', (event) => {
-      if (event.target === hideButton) return;
-      isDragging = true;
-    });
-    document.addEventListener('mousemove', (event) => {
-      if (isDragging) {
-        let newBottom = window.innerHeight - event.clientY;
-        const iconHeight = floatingIcon.offsetHeight;
-        if (newBottom < 0) newBottom = 0;
-        if (newBottom > window.innerHeight - iconHeight) newBottom = window.innerHeight - iconHeight;
-        floatingIcon.style.bottom = newBottom + 'px';
-        localStorage.setItem('advableIconPosition', newBottom + 'px');
-      }
-    });
-
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-    });
-
-    // Evento de clique para abrir o offcanvas
+    // Evento de clique para abrir o modal
     floatingIcon.addEventListener('click', () => {
-      console.log('Ícone clicado');
-      if (document.getElementById('advable-offcanvas')) return;
-      createOffcanvas();
+      if (document.getElementById('advable-modal')) return;
+      createModal();
     });
 
     // === Observadores de mudanças ===
@@ -241,33 +222,49 @@ export default defineContentScript({
     const targetNode = document.querySelector('#main') || document.body;
     observer.observe(targetNode, { childList: true, subtree: true });
 
-    // === Funções para gerenciar offcanvas ===
-    function getOffcanvasMode() {
-      return localStorage.getItem('advableOffcanvasMode') || 'floating';
+    // === Modal Advable (flutuante, móvel na horizontal e redimensionável) ===
+    const MODAL_MIN_WIDTH = 360;
+    const MODAL_DEFAULT_WIDTH = 470;
+    const MODAL_GAP = 16; // espaço entre o modal e as bordas do navegador
+
+    function getModalMaxWidth() {
+      return Math.min(900, window.innerWidth - 2 * MODAL_GAP);
     }
 
-    function setOffcanvasMode(mode) {
-      localStorage.setItem('advableOffcanvasMode', mode);
+    function clampValue(value, min, max) {
+      return Math.max(min, Math.min(max, value));
     }
 
-    function createOffcanvas() {
-      const mode = getOffcanvasMode();
+    function createModal() {
+      const maxWidth = getModalMaxWidth();
 
-      const offcanvas = document.createElement('div');
-      offcanvas.id = 'advable-offcanvas';
-      offcanvas.className = 'advable-offcanvas';
-      Object.assign(offcanvas.style, {
+      // Restaura largura/posição salvas (com limites)
+      let width = parseInt(localStorage.getItem('advableModalWidth'), 10);
+      if (!width || Number.isNaN(width)) width = MODAL_DEFAULT_WIDTH;
+      width = clampValue(width, MODAL_MIN_WIDTH, maxWidth);
+
+      let left = parseInt(localStorage.getItem('advableModalLeft'), 10);
+      if (Number.isNaN(left)) left = window.innerWidth - width - MODAL_GAP; // padrão: à direita, com folga
+      left = clampValue(left, MODAL_GAP, Math.max(MODAL_GAP, window.innerWidth - width - MODAL_GAP));
+
+      const modal = document.createElement('div');
+      modal.id = 'advable-modal';
+      modal.className = 'advable-modal';
+      Object.assign(modal.style, {
         all: 'unset',
         position: 'fixed',
-        top: '0',
-        right: '0',
-        width: '470px',
-        height: '100vh',
-        backgroundColor: 'white',
+        top: MODAL_GAP + 'px',
+        left: left + 'px',
+        width: width + 'px',
+        height: `calc(100vh - ${2 * MODAL_GAP}px)`,
+        backgroundColor: '#ffffff',
         zIndex: '2147483647',
-        boxShadow: '-2px 0 10px rgba(0, 0, 0, 0.2)',
-        transform: 'translateX(100%)',
-        transition: 'transform 0.3s ease-in-out',
+        boxShadow: '0 8px 40px rgba(0, 0, 0, 0.18)',
+        borderRadius: '16px',
+        overflow: 'hidden',
+        opacity: '0',
+        transform: 'translateX(16px)',
+        transition: 'opacity 0.25s ease, transform 0.25s ease',
         display: 'flex',
         flexDirection: 'column',
         fontFamily:
@@ -275,21 +272,24 @@ export default defineContentScript({
         fontSize: '14px',
         lineHeight: '1.5',
         color: '#212529',
+        boxSizing: 'border-box',
       });
 
-      // Cabeçalho
+      // === Cabeçalho (alça de arrasto) ===
       const header = document.createElement('div');
       Object.assign(header.style, {
         all: 'unset',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '12px 20px',
-        borderBottom: '1px solid #dee2e6',
-        background: '#f8f9fa',
+        padding: '12px 16px',
+        borderBottom: '1px solid #ececf3',
+        background: 'linear-gradient(180deg, #ffffff 0%, #f6f5fb 100%)',
         flexShrink: '0',
         boxSizing: 'border-box',
-        minHeight: '60px',
+        minHeight: '56px',
+        cursor: 'grab',
+        userSelect: 'none',
       });
 
       const headerLeft = document.createElement('div');
@@ -297,32 +297,47 @@ export default defineContentScript({
         all: 'unset',
         display: 'flex',
         alignItems: 'center',
-        gap: '12px',
-        color: '#212529',
-        fontSize: '16px',
+        gap: '10px',
+        color: '#322d78',
+        fontSize: '15px',
         fontWeight: '600',
+      });
+
+      const grip = document.createElement('span');
+      grip.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+          <path d="M7 2a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0M7 5a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0M7 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0m-3 3a1 1 0 1 1-2 0 1 1 0 0 1 2 0m3 0a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
+        </svg>
+      `;
+      Object.assign(grip.style, {
+        all: 'unset',
+        display: 'flex',
+        alignItems: 'center',
+        color: '#b9b6d6',
+        pointerEvents: 'none',
       });
 
       const logoIcon = document.createElement('img');
       logoIcon.src = browser.runtime.getURL('/icon48.png');
-      logoIcon.alt = 'Logo';
-      logoIcon.className = 'tab-icon logo-icon';
+      logoIcon.alt = 'Advable';
       Object.assign(logoIcon.style, {
-        width: '24px',
-        height: '24px',
-        display: 'flex',
-        alignItems: 'center',
+        width: '22px',
+        height: '22px',
+        display: 'block',
+        pointerEvents: 'none',
       });
 
       const title = document.createElement('span');
-      title.textContent = 'Detalhes do Processo';
+      title.textContent = 'Advable';
       Object.assign(title.style, {
         all: 'unset',
-        fontSize: '16px',
+        fontSize: '15px',
         fontWeight: '600',
         color: '#212529',
+        pointerEvents: 'none',
       });
 
+      headerLeft.appendChild(grip);
       headerLeft.appendChild(logoIcon);
       headerLeft.appendChild(title);
 
@@ -332,37 +347,6 @@ export default defineContentScript({
         display: 'flex',
         alignItems: 'center',
         gap: '8px',
-      });
-
-      // Botão de modo (fixo/flutuante)
-      const pinFilledSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a6 6 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707s.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a6 6 0 0 1 1.013.16l3.134-3.133a3 3 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146"/>
-      </svg>`;
-
-      const pinOutlineSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M9.828.722a.5.5 0 0 1 .354.146l4.95 4.95a.5.5 0 0 1 0 .707c-.48.48-1.072.588-1.503.588-.177 0-.335-.018-.46-.039l-3.134 3.134a6 6 0 0 1 .16 1.013c.046.702-.032 1.687-.72 2.375a.5.5 0 0 1-.707 0l-2.829-2.828-3.182 3.182c-.195.195-1.219.902-1.414.707s.512-1.22.707-1.414l3.182-3.182-2.828-2.829a.5.5 0 0 1 0-.707c.688-.688 1.673-.767 2.375-.72a6 6 0 0 1 1.013.16l3.134-3.133a3 3 0 0 1-.04-.461c0-.43.108-1.022.589-1.503a.5.5 0 0 1 .353-.146m.122 2.112v-.002zm0-.002v.002a.5.5 0 0 1-.122.51L6.293 6.878a.5.5 0 0 1-.511.12H5.78l-.014-.004a5 5 0 0 0-.288-.076 5 5 0 0 0-.765-.116c-.422-.028-.836.008-1.175.15l5.51 5.509c.141-.34.177-.753.149-1.175a5 5 0 0 0-.192-1.054l-.004-.013v-.001a.5.5 0 0 1 .12-.512l3.536-3.535a.5.5 0 0 1 .532-.115l.096.022c.087.017.208.034.344.034q.172.002.343-.04L9.927 2.028q-.042.172-.04.343a1.8 1.8 0 0 0 .062.46z"/>
-      </svg>`;
-
-      const modeButton = document.createElement('button');
-      modeButton.innerHTML = mode === 'fixed' ? pinFilledSVG : pinOutlineSVG;
-      modeButton.title =
-        mode === 'fixed'
-          ? 'Modo Fixo (clique para flutuante)'
-          : 'Modo Flutuante (clique para fixo)';
-      Object.assign(modeButton.style, {
-        all: 'unset',
-        width: '32px',
-        height: '32px',
-        background: 'transparent',
-        color: '#6c757d',
-        border: 'none',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        transition: 'background-color 0.2s, color 0.2s',
-        boxSizing: 'border-box',
       });
 
       const closeButton = document.createElement('button');
@@ -378,7 +362,7 @@ export default defineContentScript({
         background: 'transparent',
         color: '#6c757d',
         border: 'none',
-        borderRadius: '6px',
+        borderRadius: '8px',
         cursor: 'pointer',
         display: 'flex',
         justifyContent: 'center',
@@ -386,17 +370,6 @@ export default defineContentScript({
         transition: 'background-color 0.2s, color 0.2s',
         boxSizing: 'border-box',
       });
-
-      // Hover effects
-      modeButton.addEventListener('mouseenter', () => {
-        modeButton.style.backgroundColor = 'rgba(108, 117, 125, 0.1)';
-        modeButton.style.color = '#495057';
-      });
-      modeButton.addEventListener('mouseleave', () => {
-        modeButton.style.backgroundColor = 'transparent';
-        modeButton.style.color = '#6c757d';
-      });
-
       closeButton.addEventListener('mouseenter', () => {
         closeButton.style.backgroundColor = 'rgba(220, 53, 69, 0.1)';
         closeButton.style.color = '#dc3545';
@@ -406,12 +379,11 @@ export default defineContentScript({
         closeButton.style.color = '#6c757d';
       });
 
-      headerControls.appendChild(modeButton);
       headerControls.appendChild(closeButton);
       header.appendChild(headerLeft);
       header.appendChild(headerControls);
 
-      // Conteúdo com iframe
+      // === Conteúdo (iframe) ===
       const content = document.createElement('div');
       Object.assign(content.style, {
         all: 'unset',
@@ -431,167 +403,185 @@ export default defineContentScript({
         display: 'block',
         backgroundColor: 'white',
       });
-
       content.appendChild(iframe);
-      offcanvas.appendChild(header);
-      offcanvas.appendChild(content);
 
-      document.body.appendChild(offcanvas);
+      // === Alças de redimensionamento (bordas esquerda e direita) ===
+      function createResizeHandle(side) {
+        const handle = document.createElement('div');
+        Object.assign(handle.style, {
+          all: 'unset',
+          position: 'absolute',
+          top: '0',
+          bottom: '0',
+          [side]: '0',
+          width: '6px',
+          cursor: 'col-resize',
+          zIndex: '2',
+          backgroundColor: 'transparent',
+          transition: 'background-color 0.15s ease',
+        });
+        handle.addEventListener('mouseenter', () => {
+          handle.style.backgroundColor = 'rgba(50, 45, 120, 0.25)';
+        });
+        handle.addEventListener('mouseleave', () => {
+          handle.style.backgroundColor = 'transparent';
+        });
+        return handle;
+      }
+      const leftHandle = createResizeHandle('left');
+      const rightHandle = createResizeHandle('right');
 
-      applyOffcanvasMode(mode, offcanvas);
+      modal.appendChild(header);
+      modal.appendChild(content);
+      modal.appendChild(leftHandle);
+      modal.appendChild(rightHandle);
+
+      document.body.appendChild(modal);
+
+      // Animação de entrada
+      requestAnimationFrame(() => {
+        modal.style.opacity = '1';
+        modal.style.transform = 'translateX(0)';
+      });
+
+      // === Helpers de interação (evita que o iframe "engula" o mousemove) ===
+      let overlay = null;
+      function beginInteraction(cursor) {
+        modal.style.transition = 'none';
+        iframe.style.pointerEvents = 'none';
+        overlay = document.createElement('div');
+        Object.assign(overlay.style, {
+          position: 'fixed',
+          inset: '0',
+          zIndex: '2147483646',
+          cursor: cursor,
+          background: 'transparent',
+        });
+        document.body.appendChild(overlay);
+      }
+      function endInteraction() {
+        iframe.style.pointerEvents = 'auto';
+        modal.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+        if (overlay) {
+          overlay.remove();
+          overlay = null;
+        }
+      }
+
+      // --- Arrasto horizontal pelo cabeçalho ---
+      header.addEventListener('mousedown', (event) => {
+        if (event.button !== 0) return;
+        if (event.target.closest('button')) return; // não arrasta ao usar o botão fechar
+        event.preventDefault();
+
+        const startX = event.clientX;
+        const startLeft = parseInt(modal.style.left, 10) || 0;
+        const w = modal.offsetWidth;
+        header.style.cursor = 'grabbing';
+        beginInteraction('grabbing');
+
+        function onMove(e) {
+          const newLeft = clampValue(
+            startLeft + (e.clientX - startX),
+            MODAL_GAP,
+            Math.max(MODAL_GAP, window.innerWidth - w - MODAL_GAP)
+          );
+          modal.style.left = newLeft + 'px';
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          header.style.cursor = 'grab';
+          endInteraction();
+          localStorage.setItem('advableModalLeft', String(parseInt(modal.style.left, 10) || 0));
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      // --- Redimensionamento horizontal pelas bordas ---
+      function attachResize(handle, side) {
+        handle.addEventListener('mousedown', (event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+
+          const startX = event.clientX;
+          const startWidth = modal.offsetWidth;
+          const startLeft = parseInt(modal.style.left, 10) || 0;
+          const rightEdge = startLeft + startWidth;
+          const maxWidth = getModalMaxWidth();
+          beginInteraction('col-resize');
+
+          function onMove(e) {
+            const dx = e.clientX - startX;
+            if (side === 'left') {
+              // âncora na borda direita
+              let newWidth = clampValue(startWidth - dx, MODAL_MIN_WIDTH, maxWidth);
+              let newLeft = rightEdge - newWidth;
+              if (newLeft < MODAL_GAP) {
+                newLeft = MODAL_GAP;
+                newWidth = clampValue(rightEdge - MODAL_GAP, MODAL_MIN_WIDTH, maxWidth);
+              }
+              modal.style.width = newWidth + 'px';
+              modal.style.left = newLeft + 'px';
+            } else {
+              // âncora na borda esquerda
+              const newWidth = clampValue(
+                startWidth + dx,
+                MODAL_MIN_WIDTH,
+                Math.min(maxWidth, window.innerWidth - startLeft - MODAL_GAP)
+              );
+              modal.style.width = newWidth + 'px';
+            }
+          }
+          function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            endInteraction();
+            localStorage.setItem('advableModalWidth', String(modal.offsetWidth));
+            localStorage.setItem('advableModalLeft', String(parseInt(modal.style.left, 10) || 0));
+          }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+      }
+      attachResize(leftHandle, 'left');
+      attachResize(rightHandle, 'right');
+
+      // --- Mantém o modal dentro da viewport quando a janela é redimensionada ---
+      const onWindowResize = () => {
+        const maxWidth = getModalMaxWidth();
+        const newWidth = clampValue(modal.offsetWidth, MODAL_MIN_WIDTH, maxWidth);
+        modal.style.width = newWidth + 'px';
+        const newLeft = clampValue(
+          parseInt(modal.style.left, 10) || 0,
+          MODAL_GAP,
+          Math.max(MODAL_GAP, window.innerWidth - newWidth - MODAL_GAP)
+        );
+        modal.style.left = newLeft + 'px';
+      };
+      window.addEventListener('resize', onWindowResize);
+      modal._advableCleanup = () => window.removeEventListener('resize', onWindowResize);
+
+      // Fechar
+      closeButton.addEventListener('click', () => {
+        closeModal();
+      });
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('advable-modal');
+      if (!modal) return;
+
+      if (typeof modal._advableCleanup === 'function') modal._advableCleanup();
+
+      modal.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+      modal.style.opacity = '0';
+      modal.style.transform = 'translateX(16px)';
 
       setTimeout(() => {
-        offcanvas.style.transform = 'translateX(0)';
-      }, 10);
-
-      // Event listeners
-      modeButton.addEventListener('click', () => {
-        const currentMode = getOffcanvasMode();
-        const newMode = currentMode === 'fixed' ? 'floating' : 'fixed';
-        setOffcanvasMode(newMode);
-        applyOffcanvasMode(newMode, offcanvas);
-
-        modeButton.innerHTML = newMode === 'fixed' ? pinFilledSVG : pinOutlineSVG;
-        modeButton.title =
-          newMode === 'fixed'
-            ? 'Modo Fixo (clique para flutuante)'
-            : 'Modo Flutuante (clique para fixo)';
-      });
-
-      closeButton.addEventListener('click', () => {
-        closeOffcanvas();
-      });
-    }
-
-    function applyOffcanvasMode(mode, offcanvas) {
-      const body = document.body;
-
-      if (mode === 'fixed') {
-        body.style.marginRight = '470px';
-        body.style.transition = 'margin-right 0.3s ease-in-out';
-        body.classList.add('advbl-offcanvas-fixed-mode');
-
-        // WhatsApp Web: reduz a largura
-        if (window.location.href.includes('web.whatsapp.com')) {
-          const whatsappApp = document.querySelector('#app');
-          if (whatsappApp) {
-            const currentWidth = whatsappApp.offsetWidth;
-            const newWidth = Math.max(currentWidth - 470, 300);
-            whatsappApp.style.width = newWidth + 'px';
-            whatsappApp.style.transition = 'width 0.3s ease-in-out';
-            whatsappApp.setAttribute('data-advable-adjusted', 'true');
-            whatsappApp.setAttribute('data-advable-original-width', currentWidth + 'px');
-          }
-
-          body.style.marginRight = '470px';
-          body.setAttribute('data-advable-adjusted', 'true');
-        }
-
-        // PJE: ajusta contêineres específicos
-        if (window.location.href.includes('pje') && window.location.href.includes('jus.br')) {
-          const pjeContainers = document.querySelectorAll(
-            '.ui-layout-center, .ui-layout-container, #content, .main-content'
-          );
-          pjeContainers.forEach((container) => {
-            if (container && !container.id.includes('advable')) {
-              container.style.marginRight = '470px';
-              container.style.transition = 'margin-right 0.3s ease-in-out';
-              container.setAttribute('data-advable-adjusted', 'true');
-            }
-          });
-        }
-
-        // Ajusta elementos com position: fixed
-        const fixedElements = document.querySelectorAll(
-          '[style*="position: fixed"], [style*="position:fixed"]'
-        );
-        fixedElements.forEach((el) => {
-          if (!el.id.includes('advable') && !el.getAttribute('data-advable-adjusted')) {
-            const computedStyle = window.getComputedStyle(el);
-            if (computedStyle.position === 'fixed') {
-              el.style.marginRight = '470px';
-              el.style.transition = 'margin-right 0.3s ease-in-out';
-              el.setAttribute('data-advable-adjusted', 'true');
-            }
-          }
-        });
-
-        const possibleFixedSelectors = [
-          '.fixed',
-          '.position-fixed',
-          '.navbar-fixed-top',
-          '.navbar-fixed-bottom',
-          'header',
-          'nav',
-          '.header',
-          '.navigation',
-          '.sidebar',
-        ];
-
-        possibleFixedSelectors.forEach((selector) => {
-          const elements = document.querySelectorAll(selector);
-          elements.forEach((el) => {
-            if (!el.id.includes('advable') && !el.getAttribute('data-advable-adjusted')) {
-              const computedStyle = window.getComputedStyle(el);
-              if (computedStyle.position === 'fixed' || computedStyle.position === 'sticky') {
-                el.style.marginRight = '470px';
-                el.style.transition = 'margin-right 0.3s ease-in-out';
-                el.setAttribute('data-advable-adjusted', 'true');
-              }
-            }
-          });
-        });
-      } else {
-        // Modo flutuante
-        body.style.marginRight = '0';
-        body.classList.remove('advbl-offcanvas-fixed-mode');
-
-        const adjustedElements = document.querySelectorAll('[data-advable-adjusted="true"]');
-        adjustedElements.forEach((el) => {
-          el.style.marginRight = '0';
-
-          if (el.getAttribute('data-advable-original-width')) {
-            el.style.width = el.getAttribute('data-advable-original-width');
-            el.removeAttribute('data-advable-original-width');
-          } else {
-            el.style.width = '';
-          }
-
-          el.removeAttribute('data-advable-adjusted');
-        });
-
-        console.log('Modo flutuante ativado - ajustes removidos');
-      }
-    }
-
-    function closeOffcanvas() {
-      const offcanvas = document.getElementById('advable-offcanvas');
-
-      if (offcanvas) {
-        offcanvas.style.transform = 'translateX(100%)';
-
-        setTimeout(() => {
-          if (offcanvas) offcanvas.remove();
-
-          const body = document.body;
-          body.style.marginRight = '0';
-          body.classList.remove('advbl-offcanvas-fixed-mode');
-
-          const adjustedElements = document.querySelectorAll('[data-advable-adjusted="true"]');
-          adjustedElements.forEach((el) => {
-            el.style.marginRight = '0';
-
-            if (el.getAttribute('data-advable-original-width')) {
-              el.style.width = el.getAttribute('data-advable-original-width');
-              el.removeAttribute('data-advable-original-width');
-            } else {
-              el.style.width = '';
-            }
-
-            el.removeAttribute('data-advable-adjusted');
-          });
-        }, 300);
-      }
+        if (modal) modal.remove();
+      }, 200);
     }
   },
 });

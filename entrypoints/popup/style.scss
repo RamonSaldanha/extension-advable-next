@@ -169,8 +169,8 @@ rating {
   }
 }
 
-// Estilos específicos para offcanvas
-.advable-offcanvas {
+// Estilos específicos para o modal Advable
+.advable-modal {
   * {
     box-sizing: border-box;
   }
@@ -226,14 +226,8 @@ rating {
   align-items: center;
 }
 
-// Estilos globais para offcanvas (aplicados ao body da página)
-body.advbl-offcanvas-fixed-mode {
-  margin-right: 450px !important;
-  transition: margin-right 0.3s ease-in-out !important;
-}
-
-// Reset de estilos para garantir funcionamento em qualquer site
-#advable-offcanvas {
+// Reset de estilos para garantir funcionamento em qualquer site (modal Advable)
+#advable-modal {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
@@ -276,13 +270,5 @@ body.advbl-offcanvas-fixed-mode {
     line-height: 1 !important;
     -webkit-font-smoothing: antialiased !important;
     -moz-osx-font-smoothing: grayscale !important;
-  }
-}
-
-// Estilos específicos para WhatsApp Web
-body[data-whatsapp-adjusted] {
-  #app {
-    margin-right: 450px !important;
-    transition: margin-right 0.3s ease-in-out !important;
   }
 }
