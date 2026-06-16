@@ -45,9 +45,9 @@
           </a>
         </div>
 
-        <CreateCaseModal 
+        <CreateCaseModal
           :states="states"
-          :chat-id="chatId"
+          :chat-id="rawChatId"
           :person-id="person?.id"
           @case-created="handleCaseCreated"
         />
@@ -100,6 +100,41 @@
         <div class="mb-3 d-flex align-items-center">
           <i class="bi bi-person-fill-exclamation fs-3 me-3"></i> Essa pessoa ainda não foi cadastrada!
         </div>
+
+        <!-- Vincular este chat a um cliente já existente no banco -->
+        <Card title="Vincular a um cliente já cadastrado" class="mb-3">
+          <template #body>
+            <input
+              class="form-control form-control-sm mb-2"
+              type="text"
+              placeholder="Buscar cliente por nome"
+              v-model="linkQuery"
+            />
+            <ul v-if="linkResults.length" class="list-group list-group-flush">
+              <li
+                v-for="p in linkResults"
+                :key="p.id"
+                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+              >
+                <span>
+                  {{ p.name }}
+                  <small v-if="p.whatsapp" class="text-muted">· {{ p.whatsapp }}</small>
+                </span>
+                <button
+                  class="btn btn-sm btn-outline-primary"
+                  :disabled="linking"
+                  @click="linkExisting(p)"
+                >
+                  Vincular
+                </button>
+              </li>
+            </ul>
+            <div v-else-if="linkQuery.length >= 2" class="text-muted small">
+              Nenhum cliente encontrado.
+            </div>
+          </template>
+        </Card>
+
         <Card title="Salvar pessoa">
           <template #body>
   
@@ -307,12 +342,20 @@ import CreateCaseModal from '@/components/CreateCaseModal.vue';
 import Swal from 'sweetalert2';
 import Card from '@/components/Card.vue';
 import debounce from 'lodash.debounce';
-import { getPerson, addPeople, getAllStates, addCase } from '@/api/people';
+import { getPerson, addPeople, getAllStates, addCase, linkChat, searchPeople } from '@/api/people';
+import { displayBR } from '@/utils/phone';
 const route = useRoute();
 const router = useRouter();
-const chatId = ref(route.params.chatId);
+const chatId = ref(route.params.chatId); // chave de busca (telefone @c.us ou id @lid)
 const chatName = ref(route.params.chatName);
+const rawChatId = ref(''); // id estável do WhatsApp (@lid/@c.us) p/ vínculo
+const searchPhone = ref(''); // telefone (@c.us) p/ busca, quando houver
 const person = ref(null);
+
+// Vínculo manual (quando o chat não casa com nenhum cliente automaticamente)
+const linkQuery = ref('');
+const linkResults = ref([]);
+const linking = ref(false);
 import Loader from '@/components/Loader.vue';
 import axios from 'axios';
 const loading = ref(false);
@@ -429,13 +472,19 @@ const formatCasePrice = (price) => {
   }).format(price || 0);
 };
 
-// Função para buscar pessoa
-const fetchPerson = async (id) => {
+// Busca a pessoa pelo telefone (E.164 canônico no backend, tolerante ao 9º
+// dígito) e/ou pelo id estável do chat (resolve @lid via vínculo manual).
+const fetchPerson = async () => {
   loading.value = true;
   try {
-    const response = await getPerson(id);
-    person.value = response;
-    newCase.value.person_id = response.id;
+    const response = await getPerson({
+      phone: searchPhone.value, // só telefone real (@c.us); @lid resolve por chatId
+      chatId: rawChatId.value,
+    });
+    person.value = response && Object.keys(response).length > 0 ? response : null;
+    if (person.value) {
+      newCase.value.person_id = person.value.id;
+    }
   } catch (error) {
     person.value = null;
     console.error('Erro ao buscar pessoa:', error);
@@ -444,12 +493,64 @@ const fetchPerson = async (id) => {
   }
 };
 
-// Observar mudanças no chatId
+// Observar mudanças no chatId (o listener reatribui chatId.value ao trocar chat)
 watch(chatId, async (newChatId) => {
   if (newChatId) {
-    await fetchPerson(newChatId);
+    linkQuery.value = '';
+    linkResults.value = [];
+    await fetchPerson();
   }
 });
+
+// Busca de clientes existentes para vínculo manual.
+const searchExisting = debounce(async (q) => {
+  if (!q || q.length < 2) {
+    linkResults.value = [];
+    return;
+  }
+  try {
+    linkResults.value = await searchPeople(q);
+  } catch (error) {
+    linkResults.value = [];
+  }
+}, 400);
+
+watch(linkQuery, (q) => searchExisting(q));
+
+// Vincula o chat atual a um cliente já cadastrado.
+const linkExisting = async (p) => {
+  linking.value = true;
+  try {
+    const res = await linkChat(p.id, {
+      chat_id: rawChatId.value || chatId.value,
+      phone: searchPhone.value || '',
+    });
+    person.value = res.person;
+    newCase.value.person_id = res.person?.id;
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Cliente vinculado a esta conversa',
+      showConfirmButton: false,
+      timer: 2500,
+      timerProgressBar: true,
+    });
+  } catch (error) {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: 'Erro ao vincular cliente',
+      showConfirmButton: false,
+      timer: 2500,
+      timerProgressBar: true,
+    });
+    console.error('Erro ao vincular:', error);
+  } finally {
+    linking.value = false;
+  }
+};
 
 const fetchStates = async () => {
   loading.value = true;
@@ -463,62 +564,62 @@ const fetchStates = async () => {
   }
 };
 
-onMounted(async () => {
+// Preenche os refs de identidade (telefone e id do chat) a partir de um chat.
+const applyChat = ({ chatId: rawId, phone, chatName: name }) => {
+  rawChatId.value = rawId || '';
+  searchPhone.value = phone || (String(rawId || '').endsWith('@c.us') ? rawId : '');
+  newPerson.value.whatsapp = searchPhone.value ? displayBR(searchPhone.value) : '';
+  newPerson.value.name = name || '';
+  newCase.value.external_chat_id = rawId || '';
+};
 
-  const lastChat = JSON.parse(localStorage.getItem('last_chat'))
-  if (lastChat?.chatId && lastChat?.chatName) {
-    newPerson.value.whatsapp = formatWhatsappNumber(lastChat.chatId);
-    newPerson.value.name = lastChat.chatName;
-    newCase.value.external_chat_id = lastChat.chatId;
+onMounted(async () => {
+  const lastChat = JSON.parse(localStorage.getItem('last_chat') || 'null');
+  if (lastChat?.chatId) {
+    applyChat(lastChat);
+  } else if (chatId.value) {
+    // Sem last_chat: usa o parâmetro de rota como identidade.
+    applyChat({ chatId: chatId.value, phone: '', chatName: chatName.value });
   }
 
   if (chatId.value) {
-    await fetchPerson(chatId.value);
+    await fetchPerson();
     await fetchStates();
   }
 });
 
-// Função para formatar número do WhatsApp
-const formatWhatsappNumber = (rawNumber) => {
-  const number = rawNumber.replace('@c.us', '');
-  const ddd = number.slice(2, 4);
-  const firstPart = number.slice(4, 5);
-  const secondPart = number.slice(5, 9);
-  const thirdPart = number.slice(9);
-  return `(${ddd}) 9 ${firstPart} ${secondPart}-${thirdPart}`;
-};
-
-// Listener para mensagens do content script
+// Listener para mensagens do content script (troca de conversa)
 browser.runtime.onMessage.addListener((message) => {
+  if (message.type !== 'WHATSAPP_CHAT_CHANGED' || !message.chatId) return;
+
+  const searchKey = message.phone || message.chatId;
+  if (searchKey === chatId.value) return;
+
   loading.value = true;
   try {
-    if (message.type === 'WHATSAPP_CHAT_CHANGED') {
-      if (message.chatId !== chatId.value) {
-        chatId.value = message.chatId;
-        chatName.value = message.chatName;
-        // Salvar no localStorage
-        localStorage.setItem('last_chat', JSON.stringify({
-          chatId: message.chatId,
-          chatName: message.chatName,
-          timestamp: new Date().toISOString()
-        }));
+    chatName.value = message.chatName;
+    applyChat(message);
 
-        if (chatId.value) {
-          newPerson.value.whatsapp = formatWhatsappNumber(chatId.value);
-          newPerson.value.name = message.chatName;
-          newCase.value.external_chat_id = chatId.value;
+    localStorage.setItem(
+      'last_chat',
+      JSON.stringify({
+        chatId: message.chatId,
+        phone: message.phone || '',
+        chatName: message.chatName,
+        timestamp: new Date().toISOString(),
+      })
+    );
 
-        }
+    // Reatribuir chatId.value dispara o watch(chatId) -> fetchPerson().
+    chatId.value = searchKey;
 
-        router.push({
-          name: 'Person',
-          params: {
-            chatId: message.chatId,
-            chatName: message.chatName
-          }
-        });
-      }
-    }
+    router.push({
+      name: 'Person',
+      params: {
+        chatId: searchKey,
+        chatName: message.chatName,
+      },
+    });
   } finally {
     loading.value = false;
   }

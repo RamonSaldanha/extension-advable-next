@@ -2,6 +2,8 @@ export default defineContentScript({
   matches: ['<all_urls>'],
 
   main() {
+    console.log('[Advable content] carregado em', window.location.href);
+
     // === Listener para GET_HTML_CONTENT ===
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === 'GET_HTML_CONTENT') {
@@ -11,7 +13,13 @@ export default defineContentScript({
     });
 
     // === WhatsApp chat tracking ===
-    let lastChatId = null;
+    // O WhatsApp removeu o telefone/JID do DOM e bloqueou o store via webpack.
+    // O telefone só está acessível nas props da árvore React (React fiber) de #main,
+    // que SÓ são legíveis no MAIN world. A bridge (bridgeMain) é injetada no MAIN
+    // world via blob: (permitido pela CSP do WhatsApp) a partir deste content script
+    // isolado, e responde via window.postMessage.
+    let lastKey = null;
+    let currentChatInfo = null; // cache do último chat ativo conhecido
 
     function notifyChatChange(chatInfo) {
       if (!chatInfo || !chatInfo.chatId) return;
@@ -29,48 +37,72 @@ export default defineContentScript({
         '*'
       );
 
-      console.log('Chat alterado notificado:', chatInfo.chatName, chatInfo.chatId);
+      console.log('Chat alterado notificado:', chatInfo.chatName, chatInfo.chatId, chatInfo.phone);
     }
 
-    function getWhatsAppChatInfo() {
-      if (!window.location.href.includes('web.whatsapp.com')) return null;
+    // Trata o chat ativo recebido da bridge. `serialized` é o telefone
+    // (<num>@c.us) quando derivável; `rawChatId` é o id estável do WhatsApp
+    // (@lid/@c.us), sempre presente. Chats sem telefone (ex.: @lid) também são
+    // repassados — permitem vínculo manual pelo painel.
+    function handleActiveChat(serialized, rawChatId, chatName) {
+      const phone = serialized && serialized.endsWith('@c.us') ? serialized : '';
+      const chatId = rawChatId || phone;
+      if (!chatId) return;
 
-      let chatId = '';
+      const info = { chatId, phone, chatName: chatName || 'Chat' };
+      currentChatInfo = info;
 
-      const chatElement = document.querySelector('[data-id]');
-      if (chatElement) {
-        const rawChatId = chatElement.getAttribute('data-id');
+      if (chatId === lastKey) return;
+      lastKey = chatId;
 
-        const match = rawChatId.match(/(true|false)_(.+?)_/);
-        if (match && match[2]) {
-          chatId = match[2];
-        }
+      notifyChatChange(info);
+    }
 
-        if (chatId === lastChatId) {
-          return null;
-        }
+    // Pede à bridge (main world) o chat ativo atual.
+    function requestActiveChat() {
+      window.postMessage({ source: 'ADVABLE_WPP_REQ', type: 'GET_ACTIVE_CHAT' }, '*');
+    }
 
-        lastChatId = chatId;
+    let activeChatCheckTimer = null;
+    function scheduleActiveChatCheck(delay = 400) {
+      clearTimeout(activeChatCheckTimer);
+      activeChatCheckTimer = setTimeout(requestActiveChat, delay);
+    }
 
-        const chatHeader = document.querySelector('#main header');
-        const chatName = chatHeader
-          ? chatHeader.innerText.split('\n')[0] || 'Chat'
-          : 'Chat';
-
-        return { chatId, chatName };
+    // Recebe respostas da bridge
+    window.addEventListener('message', (event) => {
+      if (event.source !== window) return;
+      const d = event.data;
+      if (d && d.source === 'ADVABLE_WPP' && d.type === 'ACTIVE_CHAT') {
+        console.log('[Advable content] ACTIVE_CHAT recebido da bridge:', d.serialized, d.chatId, d.chatName);
+        handleActiveChat(d.serialized, d.chatId, d.chatName);
       }
+    });
 
-      return null;
-    }
-
-    // Listener para GET_WHATSAPP_CHAT_ID
+    // Listener para GET_WHATSAPP_CHAT_ID — responde com o cache e dispara refresh
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === 'GET_WHATSAPP_CHAT_ID') {
-        const info = getWhatsAppChatInfo();
-        sendResponse(info);
+        requestActiveChat();
+        sendResponse(currentChatInfo);
       }
       return true;
     });
+
+    // === Injeção da bridge MAIN world ===
+    // A CSP do WhatsApp bloqueia injetar <script> (chrome-extension:, blob: e inline).
+    // A única forma de rodar código no MAIN world (onde o React fiber é legível) é o
+    // background injetar via browser.scripting.executeScript({ world: 'MAIN' }), que é
+    // injeção do navegador (isenta da CSP da página). Pedimos isso ao background.
+    function injectBridge() {
+      browser.runtime
+        .sendMessage({ type: 'INJECT_WPP_BRIDGE' })
+        .then((res) => {
+          console.log('[Advable content] resposta INJECT_WPP_BRIDGE:', res);
+        })
+        .catch((e) => {
+          console.error('[Advable content] erro ao pedir injeção da bridge:', e);
+        });
+    }
 
     // === Verificação de URL ===
     const pattern = /(pje.*jus\.br|jus\.br.*pje|web\.whatsapp\.com)/;
@@ -78,6 +110,21 @@ export default defineContentScript({
     const isAllowedDomain = pattern.test(currentUrl);
 
     if (!isAllowedDomain) return;
+
+    // No WhatsApp, pede ao background para injetar a bridge no MAIN world e pede o
+    // chat ativo algumas vezes logo após o carregamento. A bridge também emite
+    // proativamente quando a conversa muda (MutationObserver); o poll é reforço inicial.
+    if (window.location.href.includes('web.whatsapp.com')) {
+      console.log('[Advable content] WhatsApp detectado — pedindo injeção da bridge ao background');
+      injectBridge();
+
+      let bootTries = 0;
+      const bootPoll = setInterval(() => {
+        bootTries += 1;
+        requestActiveChat();
+        if (bootTries > 30) clearInterval(bootPoll); // ~15s
+      }, 500);
+    }
 
     // Evita duplicação do ícone
     if (document.getElementById('advable-floating-icon')) return;
@@ -158,18 +205,15 @@ export default defineContentScript({
     });
 
     // === Observadores de mudanças ===
+    // Em vez de raspar o DOM, cada gatilho apenas pede o chat ativo à bridge;
+    // handleActiveChat faz o dedupe e notifica quando realmente muda.
     let lastUrl = location.href;
     new MutationObserver(() => {
       const url = location.href;
       if (url !== lastUrl) {
         lastUrl = url;
         if (url.includes('web.whatsapp.com')) {
-          setTimeout(() => {
-            const info = getWhatsAppChatInfo();
-            if (info) {
-              notifyChatChange(info);
-            }
-          }, 1000);
+          scheduleActiveChatCheck(800);
         }
       }
     }).observe(document, { subtree: true, childList: true });
@@ -178,12 +222,7 @@ export default defineContentScript({
       'click',
       () => {
         if (window.location.href.includes('web.whatsapp.com')) {
-          setTimeout(() => {
-            const info = getWhatsAppChatInfo();
-            if (info) {
-              notifyChatChange(info);
-            }
-          }, 500);
+          scheduleActiveChatCheck(400);
         }
       },
       true
@@ -191,11 +230,7 @@ export default defineContentScript({
 
     const chatListObserver = new MutationObserver(() => {
       if (window.location.href.includes('web.whatsapp.com')) {
-        const info = getWhatsAppChatInfo();
-        if (info) {
-          notifyChatChange(info);
-          console.log('Chat alterado:', info.chatId);
-        }
+        scheduleActiveChatCheck(400);
       }
     });
 
@@ -206,21 +241,6 @@ export default defineContentScript({
         subtree: true,
       });
     }
-
-    const observer = new MutationObserver(() => {
-      if (window.location.href.includes('web.whatsapp.com')) {
-        const chatInfo = getWhatsAppChatInfo();
-        if (chatInfo && chatInfo.chatId) {
-          notifyChatChange({
-            chatId: chatInfo.chatId,
-            chatName: chatInfo.chatName,
-          });
-        }
-      }
-    });
-
-    const targetNode = document.querySelector('#main') || document.body;
-    observer.observe(targetNode, { childList: true, subtree: true });
 
     // === Modal Advable (flutuante, móvel na horizontal e redimensionável) ===
     const MODAL_MIN_WIDTH = 360;

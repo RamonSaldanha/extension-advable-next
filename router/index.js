@@ -38,7 +38,7 @@ const routes = [
   {
     path: '/person',
     name: 'PersonGeneral',
-    component: () => import('@/pages/Person.vue'),
+    component: () => import('@/pages/People.vue'),
     meta: { requiresAuth: true },
   },
   {

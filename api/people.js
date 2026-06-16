@@ -1,7 +1,21 @@
 import api from './axios';
 
-export function getPerson(searchTerm) {
-  return api.get('/people-search-by-phone', { params: { phone: searchTerm } }).then((response) => response.data);
+// Busca a pessoa por telefone (E.164 canônico, tolerante ao 9º dígito) e/ou pelo
+// id estável do chat (@lid/@c.us) usado em vínculos manuais.
+export function getPerson({ phone, chatId } = {}) {
+  return api
+    .get('/people-search-by-phone', { params: { phone, chat_id: chatId } })
+    .then((response) => response.data);
+}
+
+// Vincula um chat do WhatsApp a uma pessoa já cadastrada.
+export function linkChat(personId, payload) {
+  return api.post(`/person/${personId}/link-chat`, payload).then((response) => response.data);
+}
+
+// Lista/busca pessoas por nome (para vínculo manual e página de clientes).
+export function searchPeople(name) {
+  return api.post('/person-search', { name }).then((response) => response.data);
 }
 
 export function addPeople(data) {
