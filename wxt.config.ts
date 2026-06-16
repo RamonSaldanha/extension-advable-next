@@ -5,7 +5,7 @@ export default defineConfig({
   modules: ['@wxt-dev/module-vue'],
   manifest: {
     name: 'Advable - Escritório inteligente',
-    version: '2.2.3',
+    version: '2.3.0',
     icons: {
       '16': 'icon16.png',
       '48': 'icon48.png',
