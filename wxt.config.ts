@@ -12,7 +12,15 @@ export default defineConfig({
       '128': 'icon128.png',
     },
     permissions: ['tabs', 'scripting', 'activeTab', 'storage'],
-    host_permissions: ['<all_urls>'],
+    // Restrito ao que a extensão realmente acessa: WhatsApp Web, tribunais
+    // (todos os *.jus.br) e o host da API do Advable (+ localhost p/ dev).
+    host_permissions: [
+      'https://web.whatsapp.com/*',
+      '*://*.jus.br/*',
+      'https://www.advable.com.br/*',
+      'http://127.0.0.1:8000/*',
+      'http://localhost:8000/*',
+    ],
     web_accessible_resources: [
       {
         resources: ['popup.html', 'assets/*', '*.js', '*.mjs', '*.css', '*.png'],

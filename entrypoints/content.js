@@ -1,5 +1,7 @@
 export default defineContentScript({
-  matches: ['<all_urls>'],
+  // Só os domínios onde a extensão realmente atua: WhatsApp Web e PJe/jus.br.
+  // (O botão/modal já era restrito a estes domínios pela checagem interna.)
+  matches: ['https://web.whatsapp.com/*', '*://*.jus.br/*'],
 
   main() {
     console.log('[Advable content] carregado em', window.location.href);
