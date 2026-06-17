@@ -142,7 +142,8 @@ export default defineContentScript({
     Object.assign(floatingIcon.style, {
       all: 'unset',
       position: 'fixed',
-      bottom: '24px',
+      // Acima da barra de composição do WhatsApp para não cobrir o botão de enviar.
+      bottom: '104px',
       right: '24px',
       width: '56px',
       height: '56px',
@@ -154,8 +155,8 @@ export default defineContentScript({
       justifyContent: 'center',
       alignItems: 'center',
       borderRadius: '50%',
-      border: '1px solid rgba(50, 45, 120, 0.12)',
-      boxShadow: '0 6px 20px rgba(50, 45, 120, 0.35)',
+      border: '1px solid rgba(0, 0, 0, 0.10)',
+      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.28)',
       transition: 'box-shadow 0.18s ease',
     });
 
@@ -189,12 +190,12 @@ export default defineContentScript({
 
     // Efeito de hover (apenas realça a sombra e revela o "x") — sem escalar a logo
     floatingIcon.addEventListener('mouseover', () => {
-      floatingIcon.style.boxShadow = '0 12px 32px rgba(50, 45, 120, 0.5)';
+      floatingIcon.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.40)';
       hideButton.style.display = 'flex';
     });
 
     floatingIcon.addEventListener('mouseout', () => {
-      floatingIcon.style.boxShadow = '0 6px 20px rgba(50, 45, 120, 0.35)';
+      floatingIcon.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.28)';
       hideButton.style.display = 'none';
     });
 
