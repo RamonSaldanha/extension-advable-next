@@ -1,145 +1,97 @@
 <template>
   <div class="process-tasks-container">
-    <!-- Top Actions Bar -->
-    <div class="d-flex justify-content-end align-items-center px-3 py-2 bg-light border-bottom">
-      <router-link 
-        :to="`/tasks/add?processId=${processId}`"
-        class="btn btn-primary btn-sm d-flex align-items-center"
-      >
-        <i class="bi bi-plus-circle me-2"></i>
-        Adicionar tarefas
-      </router-link>
-    </div>
-    
-    <div class="p-4">
-
-    <!-- Loading State -->
+    <!-- Loading -->
     <div v-if="loading" class="text-center py-4">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Carregando...</span>
       </div>
       <p class="mt-2 text-muted">Carregando tarefas...</p>
     </div>
-    
-    <!-- Empty State -->
-    <div v-else-if="tasks.length === 0" class="empty-state text-center py-4">
-      <i class="bi bi-clipboard-x display-4 text-muted mb-3"></i>
-      <h6 class="text-muted">Nenhuma tarefa associada</h6>
-      <p class="text-muted">Este processo ainda não possui tarefas criadas.</p>
-      
+
+    <!-- Sem nenhuma tarefa -->
+    <div v-else-if="tasks.length === 0" class="adbl-empty">
+      <i class="bi bi-clipboard-x"></i>
+      <p>Este processo ainda não possui tarefas.</p>
+      <router-link :to="`/tasks/add?processId=${processId}`" class="add-task-btn">
+        <i class="bi bi-plus"></i>
+        Adicionar tarefa
+      </router-link>
     </div>
-    
-    <!-- Task Sections -->
-    <div v-else class="task-sections">
-      <!-- Pending Tasks -->
-      <div v-if="pendingTasks.length > 0" class="task-section mb-4">
-        <div class="section-header">
-          <div class="d-flex align-items-center px-3">
-            <i class="bi bi-list-task text-primary me-2"></i>
-            <h6 class="mb-0 fw-bold text-dark">Pendentes</h6>
-            <span class="badge bg-primary rounded-pill ms-auto">{{ pendingTasks.length }}</span>
-            <small v-if="urgentTasksCount > 0" class="text-danger ms-2">
-              <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ urgentTasksCount }} urgente(s)
-            </small>
-          </div>
+
+    <!-- Lista com filtros -->
+    <div v-else class="pt-body">
+      <!-- Barra: filtros rápidos + botão -->
+      <div class="pt-toolbar">
+        <div class="task-tabs">
+          <button class="task-tab" :class="{ active: view === 'pending' }" @click="view = 'pending'">
+            Pendentes <span class="task-tab__count">{{ pendingTasks.length }}</span>
+          </button>
+          <button class="task-tab" :class="{ active: view === 'urgent' }" @click="view = 'urgent'">
+            Urgentes <span class="task-tab__count task-tab__count--danger">{{ urgentTasksCount }}</span>
+          </button>
+          <button class="task-tab" :class="{ active: view === 'completed' }" @click="view = 'completed'">
+            Concluídas <span class="task-tab__count task-tab__count--done">{{ completedTasks.length }}</span>
+          </button>
         </div>
-        <div class="task-list">
-          <div 
-            v-for="task in pendingTasks" 
-            :key="task.id" 
-            class="task-item" 
-            :class="{ 'urgent-task': isUrgentTask(task) }"
-          >
-            <div class="d-flex align-items-start p-2">
-              <div class="task-checkbox me-3">
+        <router-link :to="`/tasks/add?processId=${processId}`" class="add-task-btn">
+          <i class="bi bi-plus"></i>
+          Nova tarefa
+        </router-link>
+      </div>
+
+      <!-- Lista da aba ativa -->
+      <div v-if="visibleTasks.length > 0" class="task-list">
+        <div
+          v-for="task in visibleTasks"
+          :key="task.id"
+          class="task-card"
+          :class="{ 'task-card--done': task.completed, 'task-card--urgent': !task.completed && isOverdueTask(task) }"
+        >
+          <div class="task-card-inner">
+            <div class="task-body" @click="navigateToTask(task.id)">
+              <div class="task-top-row">
+                <h6 class="task-name" :class="{ 'task-name--done': task.completed }">{{ task.title }}</h6>
+                <span v-if="task.task_state" class="ad-pill ad-pill--cat">{{ task.task_state.title }}</span>
+                <span
+                  v-if="!task.completed && deadlineLabel(task)"
+                  class="ad-pill"
+                  :class="isOverdueTask(task) ? 'ad-pill--late' : 'ad-pill--time'"
+                >{{ deadlineLabel(task) }}</span>
+              </div>
+
+              <div v-if="task.collaborators && task.collaborators.length" class="task-assignees">
+                <span v-for="c in task.collaborators.slice(0, 3)" :key="c.id" class="task-assignee">
+                  <i class="bi bi-person-fill"></i>{{ getFirstAndLastName(c.name) }}
+                </span>
+                <span v-if="task.collaborators.length > 3" class="task-assignee task-assignee--more">
+                  +{{ task.collaborators.length - 3 }}
+                </span>
+              </div>
+
+              <div v-if="task.created_at" class="task-bottom-row">
+                <span class="task-age">{{ formatAge(task.created_at) }}</span>
+              </div>
+            </div>
+
+            <div class="task-check">
+              <label class="check-wrapper">
                 <input
-                  class="form-check-input"
                   type="checkbox"
                   :checked="task.completed"
                   @change="toggleCompleted(task)"
                 />
-              </div>
-              <div class="task-content flex-grow-1" @click="navigateToTask(task.id)" style="cursor: pointer;">
-                <!-- Task Title -->
-                <div class="d-flex align-items-start mb-1">
-                  <div class="flex-grow-1">
-                    <h6 class="task-title mb-0" :class="{ 'completed': task.completed }">
-                      <i v-if="isUrgentTask(task)" class="bi bi-exclamation-circle text-danger me-1 urgent-icon"></i>
-                      {{ task.title }}
-                    </h6>
-                    <!-- Collaborators -->
-                    <div v-if="task.collaborators && task.collaborators.length > 0" class="collaborators-info mb-1">
-                      <small class="text-muted d-flex align-items-center">
-                        <i class="bi bi-person me-1"></i>
-                        {{ task.collaborators.slice(0, 2).map(c => getFirstAndLastName(c.name)).join(', ') }}
-                        <span v-if="task.collaborators.length > 2"> +{{ task.collaborators.length - 2 }}</span>
-                      </small>
-                    </div>
-                  </div>
-                  
-                  <div class="task-meta d-flex align-items-center ms-2">
-                    <span v-if="task.task_state" class="status-badge me-2" :style="{ backgroundColor: task.task_state.color }">
-                      {{ task.task_state.title }}
-                    </span>
-                    <span v-if="task.deadline" class="deadline-badge" :class="{ 'urgent-deadline': isUrgentTask(task) }">
-                      <i class="bi bi-calendar3 me-1"></i>
-                      {{ formatDeadline(task.deadline) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
+                <span class="check-custom" :class="{ 'check-custom--done': task.completed }"></span>
+              </label>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Completed Tasks -->
-      <div v-if="completedTasks.length > 0" class="task-section">
-        <div class="section-header">
-          <div class="d-flex align-items-center px-3">
-            <i class="bi bi-check-circle-fill text-success me-2"></i>
-            <h6 class="mb-0 fw-bold text-dark">Concluídas</h6>
-            <span class="badge bg-success rounded-pill ms-auto">{{ completedTasks.length }}</span>
-          </div>
-        </div>
-        <div class="task-list completed-list">
-          <div 
-            v-for="task in completedTasks" 
-            :key="task.id" 
-            class="task-item completed"
-          >
-            <div class="d-flex align-items-start p-2">
-              <div class="task-checkbox me-3">
-                <input
-                  class="form-check-input"
-                  type="checkbox"
-                  :checked="task.completed"
-                  @change="toggleCompleted(task)"
-                />
-              </div>
-              <div class="task-content flex-grow-1" @click="navigateToTask(task.id)" style="cursor: pointer;">
-                <div class="d-flex align-items-center justify-content-between mb-1">
-                  <h6 class="task-title mb-0 completed">
-                    {{ task.title }}
-                  </h6>
-                  <small class="text-muted">
-                    <i class="bi bi-check-circle me-1"></i>
-                    Concluída
-                  </small>
-                </div>
-                
-                <div class="task-details d-flex align-items-center" v-if="task.collaborators && task.collaborators.length > 0">
-                  <!-- Collaborators -->
-                  <div class="collaborators">
-                    <small class="text-muted">{{ task.collaborators.map(c => getFirstAndLastName(c.name)).join(', ') }}</small>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- Aba sem itens -->
+      <div v-else class="tab-empty">
+        <i class="bi bi-clipboard-check"></i>
+        <p>{{ emptyMessage }}</p>
       </div>
-    </div>
     </div>
   </div>
 </template>
@@ -161,6 +113,9 @@ const props = defineProps({
 
 const tasks = ref([]);
 const loading = ref(true);
+
+// Filtro rápido ativo: pending | urgent | completed
+const view = ref('pending');
 
 const fetchTasks = async () => {
   try {
@@ -189,40 +144,55 @@ const getFirstAndLastName = (fullName) => {
   return `${names[0]} ${names[names.length - 1]}`;
 };
 
-const formatDeadline = (deadline) => {
-  if (!deadline) return '';
-  const date = new Date(deadline);
+// Prazo já vencido?
+const isOverdueTask = (task) => {
+  if (!task.deadline) return false;
+  return new Date(task.deadline) < new Date();
+};
+
+// Rótulo curto do prazo (pílula): Atrasado / Hoje / Amanhã / Em N dias / dd/mm
+const deadlineLabel = (task) => {
+  if (!task.deadline) return '';
+  const date = new Date(task.deadline);
   const now = new Date();
-  const diffTime = date.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((startDate - startToday) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'Atrasado';
   if (diffDays === 0) return 'Hoje';
   if (diffDays === 1) return 'Amanhã';
-  if (diffDays === -1) return 'Ontem';
-  if (diffDays < 0) return `${Math.abs(diffDays)} dias atrás`;
   if (diffDays <= 7) return `Em ${diffDays} dias`;
-  
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 };
 
-// Computed properties para agrupar tarefas
+// Idade da tarefa a partir da criação: Hoje / Ontem / N dias atrás
+const formatAge = (createdAt) => {
+  if (!createdAt) return '';
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 0) return 'Hoje';
+  if (diffDays === 1) return 'Ontem';
+  return `${diffDays} dias atrás`;
+};
+
+// Tarefa urgente: próximas 48h (inclui vencidas) — usado para ordenar/contar/filtrar
+const isUrgentTask = (task) => {
+  if (!task.deadline) return false;
+  return new Date(task.deadline) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+};
+
 const pendingTasks = computed(() => {
   return tasks.value.filter(task => !task.completed).sort((a, b) => {
     const aUrgent = isUrgentTask(a);
     const bUrgent = isUrgentTask(b);
-    
-    // Tarefas urgentes primeiro
     if (aUrgent && !bUrgent) return -1;
     if (!aUrgent && bUrgent) return 1;
-    
-    // Depois por deadline
     if (a.deadline && b.deadline) {
       return new Date(a.deadline) - new Date(b.deadline);
     }
     if (a.deadline && !b.deadline) return -1;
     if (!a.deadline && b.deadline) return 1;
-    
-    // Por último por data de criação
     return new Date(b.created_at) - new Date(a.created_at);
   });
 });
@@ -235,10 +205,17 @@ const completedTasks = computed(() => {
   return tasks.value.filter(task => task.completed);
 });
 
-const isUrgentTask = (task) => {
-  if (!task.deadline) return false;
-  return new Date(task.deadline) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000); // Próximas 48h
-};
+const visibleTasks = computed(() => {
+  if (view.value === 'completed') return completedTasks.value;
+  if (view.value === 'urgent') return pendingTasks.value.filter(task => isUrgentTask(task));
+  return pendingTasks.value;
+});
+
+const emptyMessage = computed(() => {
+  if (view.value === 'completed') return 'Nenhuma tarefa concluída.';
+  if (view.value === 'urgent') return 'Nenhuma tarefa urgente.';
+  return 'Nenhuma tarefa pendente.';
+});
 
 const toggleCompleted = async (task) => {
   try {
@@ -283,228 +260,284 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Task Sections Styles */
 .process-tasks-container {
   max-width: 100%;
 }
 
-.task-section {
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #e9ecef;
+.pt-body {
+  padding: 8px 16px 16px;
 }
 
-.section-header {
-  background: #f8f9fa;
-  border-bottom: 1px solid #e9ecef;
-  padding: 12px 0;
-  margin: 0 !important;
-}
-
-.section-header h6 {
-  color: #2c3e50;
-  font-weight: 600;
-}
-
-.section-header i {
-  font-size: 18px;
-}
-
-/* Task List */
-.task-list {
-  background: #fff;
-}
-
-/* Task Checkbox */
-.task-checkbox {
-  margin-top: 2px;
-}
-
-.form-check-input {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #dee2e6;
-  border-radius: 4px;
-}
-
-.form-check-input:checked {
-  background-color: #28a745;
-  border-color: #28a745;
-}
-
-/* Task Content */
-.task-content {
-  min-width: 0;
-}
-
-.task-title {
-  color: #2c3e50;
-  font-weight: 500;
-  line-height: 1.4;
-  font-size: 15px;
-  text-align: left;
-  margin-right: 8px;
-}
-
-.task-title.completed {
-  text-decoration: line-through;
-  color: #6c757d;
-}
-
-/* Task Meta Info */
-.task-meta {
-  flex-shrink: 0;
-  align-items: flex-start;
-}
-
-.status-badge {
-  font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  color: white;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.deadline-badge {
-  font-size: 11px;
-  color: #6c757d;
+/* Barra: filtros + botão (ocupa a largura, sem banda vazia) */
+.pt-toolbar {
   display: flex;
   align-items: center;
-  padding: 2px 6px;
-  background-color: #f8f9fa;
-  border-radius: 4px;
-  white-space: nowrap;
-  flex-shrink: 0;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
-.deadline-badge.urgent-deadline {
-  background-color: #fff5f5;
-  color: #dc3545;
-  border: 1px solid #f8d7da;
-}
-
-.deadline-badge i {
-  font-size: 10px;
-}
-
-/* Colaborators Icon */
-.collaborators-info i {
+.add-task-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: #16223f;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
   font-size: 13px;
-  color: #6c757d;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease;
+}
+.add-task-btn:hover {
+  background: #0f1a32;
+  color: #fff;
+}
+.add-task-btn:active {
+  transform: translateY(1px);
+}
+.add-task-btn i {
+  font-size: 16px;
+  font-weight: 700;
 }
 
-.collaborators-info {
-  margin-bottom: 6px;
+/* Filtros rápidos (idênticos à página de Tarefas) */
+.task-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
 }
-
-.collaborators-info small {
-  font-size: 11px;
-  color: #6c757d;
-}
-
-/* Urgent Task Styles */
-.urgent-task {
-  border-left: 3px solid #dc3545;
-  background-color: #fff9f9;
-}
-
-.urgent-icon {
-  font-size: 12px;
-}
-
-.task-item {
-  border-bottom: 1px solid #f1f3f4;
-  transition: all 0.2s ease;
+.task-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ad-text, #3f4757);
+  font-size: 12.5px;
+  font-weight: 600;
   cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.task-tab:hover {
+  border-color: #cfd5e0;
+}
+.task-tab.active {
+  background: var(--ad-navy, #16223f);
+  border-color: var(--ad-navy, #16223f);
+  color: #fff;
+}
+.task-tab__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #eef1f7;
+  color: var(--ad-navy, #16223f);
+  font-size: 11px;
+  font-weight: 700;
+}
+.task-tab__count--danger {
+  background: #f6dadb;
+  color: #a23a44;
+}
+.task-tab__count--done {
+  background: #e7f4ee;
+  color: #15935a;
+}
+.task-tab.active .task-tab__count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
 }
 
-.task-item:last-child {
-  border-bottom: none;
+/* Lista */
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.task-item:hover {
-  background-color: #f8f9fa;
+/* Card (idêntico à página de Tarefas) */
+.task-card {
+  background: #ffffff;
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+.task-card:hover {
+  border-color: #cfd5e0;
+}
+.task-card--done {
+  opacity: 0.65;
+  background: #fafafa;
+}
+.task-card--done:hover {
+  opacity: 0.85;
+}
+.task-card-inner {
+  display: flex;
+  align-items: flex-start;
+  padding: 14px 16px;
+  gap: 12px;
 }
 
-.task-item.completed {
-  opacity: 0.7;
-  background-color: #f8f9fa;
+/* Corpo */
+.task-body {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
-
-/* Completed List Specific Styles */
-.completed-list .task-item {
-  background-color: #f8f9fa;
+.task-top-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
-
-.completed-list .task-title {
-  color: #6c757d;
+.task-name {
   font-size: 14px;
+  font-weight: 600;
+  color: var(--ad-ink, #1a2233);
+  margin: 0;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.task-name--done {
+  text-decoration: line-through;
+  color: #8b95a5;
+  font-weight: 500;
 }
 
-/* Empty State */
-.empty-state i {
-  font-size: 3rem;
-  opacity: 0.5;
+/* Responsáveis */
+.task-assignees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.task-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ad-text, #3f4757);
+  background: #eef0f4;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+.task-assignee i {
+  font-size: 11px;
+  color: var(--ad-muted, #8b93a3);
+}
+.task-assignee--more {
+  color: var(--ad-muted, #8b93a3);
 }
 
-/* Loading State */
+/* Linha inferior: idade */
+.task-bottom-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+}
+.task-age {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ad-muted, #8b93a3);
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+/* Checkbox personalizado (à direita) */
+.task-check {
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+.check-wrapper {
+  display: flex;
+  cursor: pointer;
+  position: relative;
+}
+.check-wrapper input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.check-custom {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #c5cbd3;
+  border-radius: 5px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.check-custom::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+  margin-top: -1px;
+}
+.check-wrapper:hover .check-custom {
+  border-color: #16223f;
+  background: #eef1f7;
+}
+.check-wrapper input:checked + .check-custom {
+  background: #16a34a;
+  border-color: #16a34a;
+}
+.check-wrapper input:checked + .check-custom::after {
+  transform: rotate(45deg) scale(1);
+}
+.check-custom--done {
+  background: #16a34a !important;
+  border-color: #16a34a !important;
+}
+.check-custom--done::after {
+  transform: rotate(45deg) scale(1) !important;
+}
+
+/* Aba sem itens */
+.tab-empty {
+  text-align: center;
+  color: var(--ad-muted, #8b93a3);
+  padding: 32px 16px;
+}
+.tab-empty i {
+  font-size: 30px;
+  color: #cfd3dc;
+  display: block;
+  margin-bottom: 8px;
+}
+.tab-empty p {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+/* Loading */
 .spinner-border {
   width: 2rem;
   height: 2rem;
-}
-
-/* Responsive Design */
-@media (max-width: 576px) {
-  .task-item > div {
-    padding: 12px 16px !important;
-  }
-  
-  .section-header {
-    padding: 10px 0;
-  }
-  
-  .task-title {
-    font-size: 14px;
-  }
-  
-  .task-meta {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
-  }
-  
-  .deadline-badge {
-    font-size: 10px;
-  }
-}
-
-/* Subtle animations */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.task-item {
-  animation: slideIn 0.3s ease;
-}
-
-/* Focus states for accessibility */
-.form-check-input:focus {
-  border-color: #80bdff;
-  box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
-}
-
-.task-item:focus-within {
-  outline: 2px solid #007bff;
-  outline-offset: -2px;
 }
 </style>

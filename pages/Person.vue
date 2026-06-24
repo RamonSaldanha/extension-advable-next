@@ -4,45 +4,55 @@
       <DefaultHeader />
     </template>
 
-    <div class="container">
+    <div class="adbl-page">
       <Loader v-if="loading" />
-      <div v-if="!newCase.external_chat_id" class="select-chat">
-        <div class="text-center fs-5">
-          <p>Navegue até um chat do WhatsApp para visualizar as informações</p> 
-          <i class="bi bi-chat-left-text fs-1 text-muted"></i>
-        </div>
-      </div>
-      <div v-else-if="person && Object.keys(person).length > 0">
-        <div class="text-center">
-          <div class="fs-5 fw-semibold mb-0">{{ person.name }}</div>
-          <div><i class="bi bi-whatsapp"></i> {{ person.whatsapp }}</div>
-          <div><i class="bi bi-envelope"></i> {{ person.email || 'E-mail não cadastrado' }}</div>       
-        </div>
 
-        <div class="my-4 text-center">
-          <button 
-            class="btn btn-dark btn-sm me-2"
-            data-bs-toggle="modal" 
-            data-bs-target="#createCaseModal"
-          >
-            <i class='bx bxs-plus-circle'></i>
-            Criar Nova Negociação
-          </button>
-          <router-link 
-            :to="`/people/edit/${person.id}`"
-            class="btn btn-outline-primary btn-sm me-2"
-          >
-            <i class="bi bi-pencil-square"></i>
-            Edita pessoa
-          </router-link>
-          <a 
-            :href="`${peopleEditUrl}${person.id}`" 
-            target="_blank" 
-            class="btn btn-outline-primary btn-sm"
-          >
-            <i class="bi bi-box-arrow-up-right"></i>
-            Ver no Advable
-          </a>
+      <!-- Sem chat selecionado -->
+      <div v-if="!newCase.external_chat_id" class="adbl-empty" style="padding-top: 56px">
+        <i class="bi bi-chat-left-text"></i>
+        <p>Navegue até um chat do WhatsApp para visualizar as informações.</p>
+      </div>
+
+      <!-- Cliente cadastrado -->
+      <div v-else-if="person && Object.keys(person).length > 0" class="adbl-stack">
+        <div class="adbl-card">
+          <div class="adbl-profile">
+            <div class="adbl-profile__name">{{ person.name }}</div>
+            <div class="adbl-profile__contacts">
+              <span class="adbl-contact">
+                <i class="bi bi-whatsapp"></i>{{ person.whatsapp || 'WhatsApp não informado' }}
+              </span>
+              <span class="adbl-contact" :class="{ 'adbl-contact--muted': !person.email }">
+                <i class="bi bi-envelope"></i>{{ person.email || 'E-mail não cadastrado' }}
+              </span>
+            </div>
+          </div>
+          <div class="adbl-actions">
+            <button
+              class="adbl-btn adbl-btn--primary adbl-btn--grow"
+              data-bs-toggle="modal"
+              data-bs-target="#createCaseModal"
+            >
+              <i class="bi bi-plus-circle"></i>
+              Nova Negociação
+            </button>
+            <router-link :to="`/people/edit/${person.id}`" class="adbl-btn adbl-btn--outline adbl-btn--grow">
+              <i class="bi bi-pencil-square"></i>
+              Editar pessoa
+            </router-link>
+            <router-link :to="notesRoute" class="adbl-btn adbl-btn--outline adbl-btn--grow">
+              <i class="bi bi-journal-text"></i>
+              Anotações
+            </router-link>
+            <a
+              :href="`${peopleEditUrl}${person.id}`"
+              target="_blank"
+              class="adbl-btn adbl-btn--outline adbl-btn--grow"
+            >
+              <i class="bi bi-box-arrow-up-right"></i>
+              Ver no Advable
+            </a>
+          </div>
         </div>
 
         <CreateCaseModal
@@ -52,282 +62,187 @@
           @case-created="handleCaseCreated"
         />
 
-        <Card title="Negociaçãoes">
-          <template #body>
-            <ul class="list-group list-group-flush"> 
-              <div
-                v-for="caso in person.cases" 
-                :key="caso.id"
-                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-              >
-                <div>
-                  <div class="mb-2 fw-semibold">
-                    {{ caso.title }}
-                  </div>
+        <div class="adbl-card">
+          <div class="adbl-card__head">
+            <span class="adbl-card__head-icon"><i class="bi bi-briefcase"></i></span>
+            <span class="adbl-card__title">Negociações</span>
+            <span class="adbl-card__count">{{ person.cases ? person.cases.length : 0 }}</span>
+          </div>
 
-                  <!-- <div class="small" v-if="caso.stage.name"><i class="bi bi-funnel"></i> {{ caso.stage.name }}</div> -->
-                  <div class=" d-flex align-items-center my-1">
-                    <div class="rating small text-warning me-2">
-                      <i v-for="star in 5" 
-                         :key="star"
-                         :class="[
-                           'bi',
-                           star <= (caso.rating || 0) ? 'bi-star-fill' : 'bi-star'
-                         ]"
-                      ></i>
-                    </div>
-                    <span class="fw-semibold text-success">{{ formatCasePrice(caso.price) }}</span>
-                  </div>
-                  <div v-if="caso.stage.name" class="small">
-                    <i class="bi bi-funnel"></i> Etapa: {{ caso.stage.name }}
-                  </div>
+          <div v-if="person.cases && person.cases.length">
+            <div v-for="caso in person.cases" :key="caso.id" class="adbl-deal">
+              <div>
+                <div class="adbl-deal__title">{{ caso.title }}</div>
+                <div class="adbl-deal__meta">
+                  <span class="adbl-stars">
+                    <i
+                      v-for="star in 5"
+                      :key="star"
+                      class="bi"
+                      :class="star <= (caso.rating || 0) ? 'bi-star-fill' : 'bi-star'"
+                    ></i>
+                  </span>
+                  <span class="adbl-price">{{ formatCasePrice(caso.price) }}</span>
                 </div>
-                <div>
-                  <router-link :to="`/case/edit/${caso.uuid}`" 
-                     class="btn btn-outline-primary btn-sm"
-                  >
-                    <i class="bi bi-pencil-square"></i>
-                    Editar
-                  </router-link>
+                <div v-if="caso.stage && caso.stage.name" class="adbl-deal__meta" style="margin-top: 8px">
+                  <span class="adbl-chip"><i class="bi bi-funnel"></i>{{ caso.stage.name }}</span>
                 </div>
               </div>
-            </ul>
-          </template>
-        </Card>
-
+              <router-link :to="`/case/edit/${caso.uuid}`" class="adbl-btn adbl-btn--outline adbl-btn--sm">
+                <i class="bi bi-pencil-square"></i>
+                Editar
+              </router-link>
+            </div>
+          </div>
+          <div v-else class="adbl-empty">
+            <i class="bi bi-briefcase"></i>
+            <p>Nenhuma negociação ainda.</p>
+          </div>
+        </div>
       </div>
-      <div v-else>
-        <div class="mb-3 d-flex align-items-center">
-          <i class="bi bi-person-fill-exclamation fs-3 me-3"></i> Essa pessoa ainda não foi cadastrada!
+
+      <!-- Cliente não cadastrado -->
+      <div v-else class="adbl-stack">
+        <div class="adbl-empty" style="padding: 24px 16px 4px">
+          <i class="bi bi-person-fill-exclamation"></i>
+          <p>Essa pessoa ainda não foi cadastrada.</p>
         </div>
 
         <!-- Vincular este chat a um cliente já existente no banco -->
-        <Card title="Vincular a um cliente já cadastrado" class="mb-3">
-          <template #body>
+        <div class="adbl-card">
+          <div class="adbl-card__head">
+            <span class="adbl-card__head-icon"><i class="bi bi-link-45deg"></i></span>
+            <span class="adbl-card__title">Vincular a um cliente existente</span>
+          </div>
+          <div class="adbl-card__body">
             <input
-              class="form-control form-control-sm mb-2"
+              class="adbl-input"
               type="text"
               placeholder="Buscar cliente por nome"
               v-model="linkQuery"
             />
-            <ul v-if="linkResults.length" class="list-group list-group-flush">
-              <li
-                v-for="p in linkResults"
-                :key="p.id"
-                class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-              >
+            <ul v-if="linkResults.length" class="adbl-link-list">
+              <li v-for="p in linkResults" :key="p.id" class="adbl-link-item">
                 <span>
                   {{ p.name }}
-                  <small v-if="p.whatsapp" class="text-muted">· {{ p.whatsapp }}</small>
+                  <small v-if="p.whatsapp">· {{ p.whatsapp }}</small>
                 </span>
-                <button
-                  class="btn btn-sm btn-outline-primary"
-                  :disabled="linking"
-                  @click="linkExisting(p)"
-                >
+                <button class="adbl-btn adbl-btn--outline adbl-btn--sm" :disabled="linking" @click="linkExisting(p)">
                   Vincular
                 </button>
               </li>
             </ul>
-            <div v-else-if="linkQuery.length >= 2" class="text-muted small">
-              Nenhum cliente encontrado.
-            </div>
-          </template>
-        </Card>
+            <div v-else-if="linkQuery.length >= 2" class="adbl-muted-note">Nenhum cliente encontrado.</div>
+          </div>
+        </div>
 
-        <Card title="Salvar pessoa">
-          <template #body>
-  
-            <!-- Informações Básicas -->
-            <div class="mb-2">
-              <label class="fw-bold mb-1">Nome</label>
-              <input 
-                class="form-control form-control-sm" 
-                type="text" 
-                v-model="newPerson.name"
-              />
+        <div class="adbl-card">
+          <div class="adbl-card__head">
+            <span class="adbl-card__head-icon"><i class="bi bi-person-plus"></i></span>
+            <span class="adbl-card__title">Cadastrar pessoa</span>
+          </div>
+          <div class="adbl-card__body">
+            <div class="adbl-field">
+              <label class="adbl-label">Nome</label>
+              <input class="adbl-input" type="text" v-model="newPerson.name" />
             </div>
-    
-            <div class="mb-2">
-              <label class="fw-bold mb-1">WhatsApp</label>
-              <input 
-                class="form-control form-control-sm" 
-                type="text" 
-                v-maska="'(##) 9 ####-####'"
-                v-model="newPerson.whatsapp"
-              />
-            </div>
-    
-            <div class="mb-2">
-              <label class="fw-bold mb-1">Email</label>
-              <input
-                class="form-control form-control-sm"
-                type="email"
-                v-model="newPerson.email"
-              />
-            </div>
-    
-            <!-- Documentos -->
-            <details class="mt-3">
-              <summary class="fw-bold">Documentos</summary>
-              <div class="mt-2">
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">CPF</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-maska="'###.###.###-##'"
-                    v-model="newPerson.cpf"
-                  />
-                </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">RG</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-model="newPerson.rg"
-                  />
-                </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">CNPJ</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-maska="'##.###.###/####-##'"
-                    v-model="newPerson.cnpj"
-                  />
-                </div>
-              </div>
-            </details>
-    
-            <!-- Informações Pessoais -->
-            <details class="mt-3">
-              <summary class="fw-bold">Informações Pessoais</summary>
-              <div class="mt-2">
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Nacionalidade</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-model="newPerson.nationality"
-                  />
-                </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Profissão</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-model="newPerson.occupation"
-                  />
-                </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Data de Nascimento</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-maska="'##/##/####'"
-                    v-model="newPerson.birthday"
-                  />
-                </div>
 
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Estado Civil</label>
-                  <select
-                  class="form-select form-select-sm"
-                  v-model="newPerson.civilStatus"
-                  >
-                  <option value="solteiro">Solteiro(a)</option>
-                  <option value="casado">Casado(a)</option>
-                  <option value="união estável">União Estável</option>
-                  <option value="divorciado">Divorciado(a)</option>
-                  <option value="viúvo">Viúvo(a)</option>
-                </select>
+            <div class="adbl-field">
+              <label class="adbl-label">WhatsApp</label>
+              <input class="adbl-input" type="text" v-maska="'(##) 9 ####-####'" v-model="newPerson.whatsapp" />
+            </div>
+
+            <div class="adbl-field">
+              <label class="adbl-label">Email</label>
+              <input class="adbl-input" type="email" v-model="newPerson.email" />
+            </div>
+
+            <details class="adbl-accordion" style="margin-top: 16px">
+              <summary>Documentos</summary>
+              <div class="adbl-accordion__body">
+                <div class="adbl-field">
+                  <label class="adbl-label">CPF</label>
+                  <input class="adbl-input" type="text" v-maska="'###.###.###-##'" v-model="newPerson.cpf" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">RG</label>
+                  <input class="adbl-input" type="text" v-model="newPerson.rg" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">CNPJ</label>
+                  <input class="adbl-input" type="text" v-maska="'##.###.###/####-##'" v-model="newPerson.cnpj" />
                 </div>
               </div>
             </details>
-    
-            <!-- Endereço -->
-            <details class="mt-3">
-              <summary class="fw-bold">Endereço</summary>
-              <div class="mt-2">
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">CEP</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-maska="'#####-###'"
-                    v-model="newPerson.address_zip"
-                  />
+
+            <details class="adbl-accordion">
+              <summary>Informações Pessoais</summary>
+              <div class="adbl-accordion__body">
+                <div class="adbl-field">
+                  <label class="adbl-label">Nacionalidade</label>
+                  <input class="adbl-input" type="text" v-model="newPerson.nationality" />
                 </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Cidade</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-model="newPerson.address_city"
-                  />
+                <div class="adbl-field">
+                  <label class="adbl-label">Profissão</label>
+                  <input class="adbl-input" type="text" v-model="newPerson.occupation" />
                 </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Estado</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    placeholder="UF (ex: SP)"
-                    v-model="newPerson.address_state"
-                  />
+                <div class="adbl-field">
+                  <label class="adbl-label">Data de Nascimento</label>
+                  <input class="adbl-input" type="text" v-maska="'##/##/####'" v-model="newPerson.birthday" />
                 </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Logradouro</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-model="newPerson.address_name"
-                  />
-                </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Número</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-model="newPerson.address_num"
-                  />
-                </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Complemento</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-model="newPerson.address_extra"
-                  />
-                </div>
-    
-                <div class="mb-2">
-                  <label class="fw-bold mb-1">Bairro</label>
-                  <input
-                    class="form-control form-control-sm"
-                    type="text"
-                    v-model="newPerson.district"
-                  />
+                <div class="adbl-field">
+                  <label class="adbl-label">Estado Civil</label>
+                  <select class="adbl-select" v-model="newPerson.civilStatus">
+                    <option value="solteiro">Solteiro(a)</option>
+                    <option value="casado">Casado(a)</option>
+                    <option value="união estável">União Estável</option>
+                    <option value="divorciado">Divorciado(a)</option>
+                    <option value="viúvo">Viúvo(a)</option>
+                  </select>
                 </div>
               </div>
             </details>
-            <button 
-              class="btn btn-primary mt-3"
-              @click="savePerson"
-            >
+
+            <details class="adbl-accordion">
+              <summary>Endereço</summary>
+              <div class="adbl-accordion__body">
+                <div class="adbl-field">
+                  <label class="adbl-label">CEP</label>
+                  <input class="adbl-input" type="text" v-maska="'#####-###'" v-model="newPerson.address_zip" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">Cidade</label>
+                  <input class="adbl-input" type="text" v-model="newPerson.address_city" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">Estado</label>
+                  <input class="adbl-input" type="text" placeholder="UF (ex: SP)" v-model="newPerson.address_state" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">Logradouro</label>
+                  <input class="adbl-input" type="text" v-model="newPerson.address_name" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">Número</label>
+                  <input class="adbl-input" type="text" v-model="newPerson.address_num" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">Complemento</label>
+                  <input class="adbl-input" type="text" v-model="newPerson.address_extra" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">Bairro</label>
+                  <input class="adbl-input" type="text" v-model="newPerson.district" />
+                </div>
+              </div>
+            </details>
+
+            <button class="adbl-btn adbl-btn--primary adbl-btn--block" style="margin-top: 6px" @click="savePerson">
+              <i class="bi bi-check2"></i>
               Salvar
             </button>
-          </template>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   </Layout>
@@ -420,6 +335,16 @@ const states = ref([]);
 const caseEditUrl = computed(() => `${import.meta.env.VITE_APP_BASE_URL}crm/case/`);
 const peopleEditUrl = computed(() => `${import.meta.env.VITE_APP_BASE_URL}people/details/`);
 
+// Rota da view de anotações deste mesmo chat, preservando os identificadores.
+const notesRoute = computed(() => ({
+  name: 'PersonNote',
+  params: {
+    chatId: searchPhone.value || rawChatId.value || chatId.value,
+    chatName: chatName.value || 'Chat',
+  },
+  query: { raw: rawChatId.value, phone: searchPhone.value },
+}));
+
 const savePerson = async () => {
   loading.value = true;
   try {
@@ -437,7 +362,7 @@ const savePerson = async () => {
   } catch ( error ) {
     const errors = error.response?.data?.errors;
     let errorMessage = '';
-    
+
     if (errors && Object.keys(errors).length > 0) {
       // Monta mensagem com todos os campos com erro
       errorMessage = Object.entries(errors)
@@ -447,7 +372,7 @@ const savePerson = async () => {
       // Mensagem genérica caso não seja erro de validação
       errorMessage = 'Ocorreu um erro ao salvar. Tente novamente mais tarde.';
     }
-    
+
     Swal.fire({
       toast: true,
       position: 'top-end',
@@ -574,15 +499,21 @@ const applyChat = ({ chatId: rawId, phone, chatName: name }) => {
 };
 
 onMounted(async () => {
-  const lastChat = JSON.parse(localStorage.getItem('last_chat') || 'null');
-  if (lastChat?.chatId) {
-    applyChat(lastChat);
-  } else if (chatId.value) {
-    // Sem last_chat: usa o parâmetro de rota como identidade.
-    applyChat({ chatId: chatId.value, phone: '', chatName: chatName.value });
+  const q = route.query;
+  if (q.raw || q.phone) {
+    // Deep-link explícito do cluster de ícones (identidade exata do chat).
+    applyChat({ chatId: q.raw || chatId.value, phone: q.phone || '', chatName: chatName.value });
+  } else {
+    const lastChat = JSON.parse(localStorage.getItem('last_chat') || 'null');
+    if (lastChat?.chatId) {
+      applyChat(lastChat);
+    } else if (chatId.value) {
+      // Sem last_chat: usa o parâmetro de rota como identidade.
+      applyChat({ chatId: chatId.value, phone: '', chatName: chatName.value });
+    }
   }
 
-  if (chatId.value) {
+  if (chatId.value || rawChatId.value || searchPhone.value) {
     await fetchPerson();
     await fetchStates();
   }
@@ -626,6 +557,4 @@ browser.runtime.onMessage.addListener((message) => {
 });
 </script>
 
-<style scoped>
-
-</style>
+<style scoped></style>

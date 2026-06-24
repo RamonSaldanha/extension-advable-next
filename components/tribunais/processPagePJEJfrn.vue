@@ -501,6 +501,6 @@ function getTerceiros(doc) {
 }
 
 .advogado-item .bi-person-badge {
-  color: #0d6efd;
+  color: #16223f;
 }
 </style>

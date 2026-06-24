@@ -4,163 +4,128 @@
       <DefaultHeader />
     </template>
 
-    <div class="container">
+    <div class="adbl-page">
       <Loader v-if="loading" />
-      <div class="d-flex justify-content-between align-items-center">
-        <button 
-          class="btn btn-sm btn-outline-secondary my-3" 
-          @click="handleBack"
-        >
+
+      <div class="adbl-subhead">
+        <button class="adbl-back" @click="handleBack">
           <i class="bi bi-arrow-left-short"></i>
           Voltar
         </button>
-        <div class="fw-semibold fs-6 text-muted">
-          {{ caso?.title }}
-        </div>
+        <div class="adbl-subhead__ctx">{{ caso?.title }}</div>
       </div>
 
-      <div class="row gx-3">
-        <!-- Coluna principal -->
-        <div class="col-md-8">
-          <Card title="Informações do Caso" class="mb-3">
-            <template #body>
-              <div class="mb-3">
-                <label for="title" class="form-label fw-semibold">Título</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="caso.title"
-                />
-              </div>
+      <div class="adbl-stack">
+        <!-- Informações do Caso -->
+        <div class="adbl-card">
+          <div class="adbl-card__head">
+            <span class="adbl-card__head-icon"><i class="bi bi-folder2-open"></i></span>
+            <span class="adbl-card__title">Informações do Caso</span>
+          </div>
+          <div class="adbl-card__body">
+            <div class="adbl-field">
+              <label class="adbl-label">Título</label>
+              <input class="adbl-input" type="text" v-model="caso.title" />
+            </div>
 
-              <div class="mb-3">
-                <label for="state" class="form-label fw-semibold">Estado</label>
-                <select
-                  class="form-select form-select-sm"
-                  v-model="caso.state_id"
-                  @change="saveCase"
-                >
-                  <option value="" disabled selected>Selecione um estado</option>
-                  <option 
-                    v-for="state in states" 
-                    :key="state.id" 
-                    :value="state.id"
-                  >
-                    {{ state.name }}
-                  </option>
-                </select>
-              </div>
+            <div class="adbl-field">
+              <label class="adbl-label">Estado</label>
+              <select class="adbl-select" v-model="caso.state_id" @change="saveCase">
+                <option value="" disabled selected>Selecione um estado</option>
+                <option v-for="state in states" :key="state.id" :value="state.id">
+                  {{ state.name }}
+                </option>
+              </select>
+            </div>
 
-              <div class="mb-3 d-flex">
-                <div class="me-2 fw-semibold">
-                  Qualificação:
-                </div>
-                <div class="rating">
-                  <span 
-                    v-for="star in 5" 
-                    :key="star"
-                    @click="updateRating(star)"
-                    class="rating-star"
-                    :class="{ 'text-warning': star <= (caso.rating || 0) }"
-                  >
-                    <i 
-                      class="bi" 
-                      :class="star <= (caso.rating || 0) ? 'bi-star-fill' : 'bi-star'"
-                    ></i>
-                  </span>
-                </div>
+            <div class="adbl-field">
+              <label class="adbl-label">Qualificação</label>
+              <div class="adbl-rating">
+                <i
+                  v-for="star in 5"
+                  :key="star"
+                  class="bi"
+                  :class="star <= (caso.rating || 0) ? 'bi-star-fill is-on' : 'bi-star'"
+                  @click="updateRating(star)"
+                ></i>
               </div>
+            </div>
 
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Descrição</label>
-                <textarea
-                  class="form-control form-control-sm"
-                  v-model="caso.description"
-                  placeholder="Faça uma descrição desse caso"
-                  rows="4"
-                ></textarea>
-              </div>
+            <div class="adbl-field">
+              <label class="adbl-label">Descrição</label>
+              <textarea
+                class="adbl-textarea"
+                v-model="caso.description"
+                placeholder="Faça uma descrição desse caso"
+                rows="4"
+              ></textarea>
+            </div>
 
-              <div class="mb-3">
-                <button
-                  type="button"
-                  class="btn btn-outline-danger btn-sm"
-                  @click="deleteCase(caso.uuid)"
-                >
-                  <i class="bi bi-trash"></i>
-                  Deletar caso
-                </button>
-              </div>
-            </template>
-          </Card>
+            <button type="button" class="adbl-btn adbl-btn--danger-soft adbl-btn--sm" @click="deleteCase(caso.uuid)">
+              <i class="bi bi-trash"></i>
+              Deletar caso
+            </button>
+          </div>
         </div>
 
-        <!-- Coluna lateral -->
-        <div class="col-md-4">
+        <!-- Negociação -->
+        <div class="adbl-card">
+          <div class="adbl-card__head">
+            <span class="adbl-card__head-icon"><i class="bi bi-cash-coin"></i></span>
+            <span class="adbl-card__title">Negociação</span>
+          </div>
+          <div class="adbl-card__body">
+            <div class="adbl-field">
+              <label class="adbl-label">Valor</label>
+              <input class="adbl-input" type="text" v-money="money" v-model="caso.price" />
+            </div>
 
-          <!-- Negociação -->
-          <Card title="Negociação" icon="bi-cash-coin">
-            <template #body>
-              <div class="mb-3">
-                <label class="form-label fw-semibold">Valor</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-money="money"
-                  v-model="caso.price"
-                />
-              </div>
-              <div class="d-flex gap-2">
-                <button 
-                  class="btn btn-success btn-sm" 
-                  @click="toggleStatus('Venda')"
-                  :disabled="caso.status === 'Venda'"
-                >
-                  <i class="bi bi-check-circle"></i> Marcar como venda
-                </button>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <button
+                class="adbl-btn adbl-btn--success adbl-btn--sm"
+                @click="toggleStatus('Venda')"
+                :disabled="caso.status === 'Venda'"
+              >
+                <i class="bi bi-check-circle"></i> Venda
+              </button>
+              <button
+                class="adbl-btn adbl-btn--danger-soft adbl-btn--sm"
+                @click="toggleStatus('Perda')"
+                :disabled="caso.status === 'Perda'"
+              >
+                <i class="bi bi-x-circle"></i> Perda
+              </button>
+              <button
+                class="adbl-btn adbl-btn--outline adbl-btn--sm"
+                @click="toggleStatus('Pendente')"
+                :disabled="caso.status === 'Pendente'"
+              >
+                <i class="bi bi-clock"></i> Pendente
+              </button>
+            </div>
 
-                <button 
-                  class="btn btn-danger btn-sm"
-                  @click="toggleStatus('Perda')"
-                  :disabled="caso.status === 'Perda'"
-                >
-                  <i class="bi bi-x-circle"></i> Marcar como perda
-                </button>
+            <div style="margin-top: 12px" v-if="caso.status && caso.status !== 'Pendente'">
+              <span
+                class="adbl-chip"
+                :class="{
+                  'adbl-chip--success': caso.status === 'Venda',
+                  'adbl-chip--danger': caso.status === 'Perda',
+                }"
+              >
+                {{ caso.status }} em {{ formatDate(caso.status_date) }}
+              </span>
+            </div>
 
-                <button 
-                  class="btn btn-warning btn-sm text-white"
-                  @click="toggleStatus('Pendente')"
-                  :disabled="caso.status === 'Pendente'"
-                >
-                  <i class="bi bi-clock"></i> Marcar como pendente
-                </button>
-              </div>
-
-
-              <div class="mt-2" v-if="caso.status !== 'Pendente'">
-                <span :class="{
-                  'text-success': caso.status === 'Venda',
-                  'text-danger': caso.status === 'Perda'
-                }">
-                  Status: {{ caso.status }} em {{ formatDate(caso.status_date) }}
-                </span>
-              </div>
-
-              <div class="mt-3" v-if="caso.status === 'Perda'">
-                <label class="form-label fw-semibold">Motivo da perda</label>
-                <select
-                  class="form-select form-select-sm"
-                  v-model="caso.loss_reason"
-                  @change="saveCase"
-                >
-                  <option value="" disabled selected>Selecione um motivo</option>
-                  <option v-for="reason in lossReasons" :key="reason" :value="reason">
-                    {{ reason }}
-                  </option>
-                </select>
-              </div>
-            </template>
-          </Card>
+            <div class="adbl-field" style="margin-top: 14px" v-if="caso.status === 'Perda'">
+              <label class="adbl-label">Motivo da perda</label>
+              <select class="adbl-select" v-model="caso.loss_reason" @change="saveCase">
+                <option value="" disabled selected>Selecione um motivo</option>
+                <option v-for="reason in lossReasons" :key="reason" :value="reason">
+                  {{ reason }}
+                </option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -240,12 +205,12 @@ const fetchCase = async () => {
   try {
     const response = await getCaseByUuid(route.params.uuid)
     caso.value = response
-    
+
     // Adicionar watchers após o carregamento inicial
     setTimeout(() => {
       isInitialLoad.value = false
     }, 1000)
-    
+
   } catch (error) {
     console.error('Erro ao buscar caso:', error)
     showError('Erro ao buscar caso')
@@ -301,7 +266,7 @@ const saveCase = async () => {
     if (casoToSave.price) {
       casoToSave.price = formatPriceToApi(casoToSave.price)
     }
-    
+
     await updateCase(casoToSave.uuid, casoToSave)
     showSuccess('Caso atualizado com sucesso')
   } catch (error) {
@@ -370,13 +335,4 @@ const debouncedSave = debounce(async () => {
 }, 800)
 </script>
 
-<style scoped>
-.rating-star {
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.rating-star:hover {
-  color: #ffc107;
-}
-</style>
+<style scoped></style>

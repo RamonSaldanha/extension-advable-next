@@ -57,6 +57,51 @@ export default defineBackground(() => {
         return true;
       }
 
+      // Lookup autenticado: "esse chat tem cliente cadastrado?". Roda no background
+      // porque o content script (origem WhatsApp) não enxerga o token do popup.
+      // Reusa o endpoint /people-search-by-phone e mantém o token fora da página.
+      if (message.type === 'LOOKUP_PERSON') {
+        (async () => {
+          try {
+            const { token } = await browser.storage.local.get('token');
+            if (!token) {
+              sendResponse({ ok: false, registered: false, reason: 'no-token' });
+              return;
+            }
+
+            const base = import.meta.env.VITE_API_BASE_URL;
+            const url = new URL(`${base}/people-search-by-phone`);
+            if (message.phone) url.searchParams.set('phone', message.phone);
+            if (message.chatId) url.searchParams.set('chat_id', message.chatId);
+
+            const res = await fetch(url.toString(), {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json',
+              },
+            });
+
+            if (!res.ok) {
+              sendResponse({ ok: false, registered: false, status: res.status });
+              return;
+            }
+
+            const person = await res.json();
+            const registered = !!(person && person.id);
+            sendResponse({
+              ok: true,
+              registered,
+              personId: registered ? person.id : null,
+              hasNote: !!(person && person.latest_note),
+            });
+          } catch (e) {
+            console.error('[Background] erro no LOOKUP_PERSON:', e);
+            sendResponse({ ok: false, registered: false, error: String(e) });
+          }
+        })();
+        return true; // resposta assíncrona
+      }
+
       // Coleta de expedientes do PJE
       if (message.type === 'COLLECT_EXPEDIENTES') {
         browser.tabs.query({ active: true, currentWindow: true }).then(async (tabs) => {

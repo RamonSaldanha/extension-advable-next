@@ -48,6 +48,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/person/note/:chatId/:chatName',
+    name: 'PersonNote',
+    component: () => import('@/pages/PersonNote.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/processes',
     name: 'ProcessIndex',
     component: () => import('@/pages/ProcessIndex.vue'),

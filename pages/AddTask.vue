@@ -4,49 +4,47 @@
       <DefaultHeader />
     </template>
     
-    <!-- Top Actions Bar -->
-    <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-light border-bottom">
-      <button 
-        type="button" 
-        class="btn btn-outline-secondary btn-sm d-flex align-items-center"
+    <!-- Barra de ações -->
+    <div class="adbl-subhead task-actionbar">
+      <button
+        type="button"
+        class="adbl-back"
         @click="router.push('/tasks')"
       >
-        <i class="bi bi-arrow-left"></i>
+        <i class="bi bi-arrow-left"></i> Voltar
       </button>
-      
-      <div class="text-center">
-        <span class="small text-muted fw-medium">Criando tarefa</span>
-      </div>
-      
-      <button 
-        type="submit" 
-        class="btn btn-primary btn-sm d-flex align-items-center"
+
+      <span class="adbl-subhead__ctx">Criando tarefa</span>
+
+      <button
+        type="submit"
+        class="adbl-btn adbl-btn--primary adbl-btn--sm"
         @click="handleAddTask"
         :disabled="adding"
       >
-        <div v-if="adding" class="spinner-border spinner-xs me-2"></div>
-        <i v-else class="bi bi-plus-circle me-2"></i>
+        <span v-if="adding" class="spinner-border spinner-xs"></span>
+        <i v-else class="bi bi-plus-circle"></i>
         {{ adding ? 'Adicionando...' : 'Adicionar' }}
       </button>
     </div>
     
     <div class="p-4">
-      <h1 class="text-2xl font-bold mb-4">Adicionar Nova Tarefa</h1>
+      <h1 class="ad-page-title mb-4">Nova tarefa</h1>
       <form @submit.prevent="handleAddTask">
-        <div class="mb-3">
-          <label for="taskTitle" class="form-label">Título</label>
-          <input type="text" class="form-control" id="taskTitle" v-model="newTask.title" required>
+        <div class="adbl-field">
+          <label for="taskTitle" class="adbl-label">Título</label>
+          <input type="text" class="adbl-input" id="taskTitle" v-model="newTask.title" required>
         </div>
-        <div class="mb-3">
-          <label for="taskState" class="form-label">Estágio</label>
-          <select class="form-select" id="taskState" v-model="newTask.task_state_id" required>
+        <div class="adbl-field">
+          <label for="taskState" class="adbl-label">Estágio</label>
+          <select class="adbl-select" id="taskState" v-model="newTask.task_state_id" required>
             <option disabled value="">Selecione um estágio</option>
             <option v-for="state in taskStates" :key="state.id" :value="state.id">{{ state.title }}</option>
           </select>
         </div>
-        
-        <div class="mb-3">
-          <label class="form-label">Descrição (opcional)</label>
+
+        <div class="adbl-field">
+          <label class="adbl-label">Descrição (opcional)</label>
           <QuillEditor
             v-model:content="newTask.description"
             contentType="html"
@@ -57,14 +55,14 @@
         </div>
 
         <!-- Deadline Field -->
-        <div class="mb-3">
-          <label for="taskDeadline" class="form-label">Prazo (opcional)</label>
+        <div class="adbl-field">
+          <label for="taskDeadline" class="adbl-label">Prazo (opcional)</label>
           <div v-if="route.query.date" class="mb-2">
             <small class="text-success">
               <i class="bi bi-calendar-check"></i> Data pré-selecionada do calendário
             </small>
           </div>
-          
+
           <VueDatePicker
             id="taskDeadline"
             v-model="newTask.deadline"
@@ -81,19 +79,19 @@
             :minutes-increment="15"
           />
           
-          <div class="form-text">
-            <i class="bi bi-info-circle"></i> 
-            <small>Ideal para compromissos como audiências e reuniões</small>
+          <div class="adbl-muted-note">
+            <i class="bi bi-info-circle"></i>
+            Ideal para compromissos como audiências e reuniões
           </div>
         </div>
 
         <!-- Process Search -->
-        <div class="mb-3">
-          <label for="processSearch" class="form-label">Associar Processos (opcional)</label>
+        <div class="adbl-field">
+          <label for="processSearch" class="adbl-label">Associar Processos (opcional)</label>
           <div class="position-relative">
             <input
               type="text"
-              class="form-control"
+              class="adbl-input"
               id="processSearch"
               v-model="processSearchQuery"
               @input="handleProcessSearch"
@@ -103,7 +101,7 @@
             >
             
             <!-- Process Search Results -->
-            <div v-if="showProcessResults && (processes.length > 0 || isSearchingProcesses)" class="position-absolute w-100 bg-white border border-top-0 rounded-bottom shadow-sm" style="z-index: 1000; max-height: 200px; overflow-y: auto;">
+            <div v-if="showProcessResults && (processes.length > 0 || isSearchingProcesses)" class="position-absolute w-100 search-dropdown" style="z-index: 1000; max-height: 200px; overflow-y: auto;">
               <div v-if="isSearchingProcesses" class="p-3 text-center text-muted">
                 <div class="spinner-border spinner-border-sm me-2"></div>
                 Buscando...
@@ -130,7 +128,7 @@
               <span
                 v-for="process in newTask.processes"
                 :key="process.id"
-                class="badge bg-primary d-flex align-items-center gap-1"
+                class="ad-pill ad-pill--cat"
               >
                 {{ process.process_num }}
                 <button
@@ -145,9 +143,9 @@
         </div>
 
         <!-- Collaborators -->
-        <div class="mb-3">
-          <label class="form-label">Colaboradores (opcional)</label>
-          <div class="border rounded p-3" style="max-height: 150px; overflow-y: auto;">
+        <div class="adbl-field">
+          <label class="adbl-label">Colaboradores (opcional)</label>
+          <div class="collab-box" style="max-height: 150px; overflow-y: auto;">
             <div v-if="teamUsers.length === 0" class="text-muted small">
               Nenhum colaborador disponível
             </div>
@@ -178,7 +176,7 @@
               <span
                 v-for="collaborator in newTask.collaborators"
                 :key="collaborator.id"
-                class="badge bg-success"
+                class="ad-pill ad-pill--cat"
               >
                 {{ collaborator.name }}
               </span>
@@ -429,6 +427,27 @@ onMounted(async () => {
   cursor: pointer;
 }
 
+/* Barra de ações (Voltar + contexto + Adicionar) */
+.task-actionbar {
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ad-line, #e6e8ee);
+}
 
+/* Dropdown de resultados de busca de processo */
+.search-dropdown {
+  background: #fff;
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 8px 24px rgba(20, 28, 50, 0.10);
+}
 
+/* Caixa de colaboradores */
+.collab-box {
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 10px;
+  padding: 12px;
+}
 </style>

@@ -13,34 +13,24 @@
       </div>
       <div v-else-if="process">
         <!-- Navegação das Tabs -->
-        <ul class="nav nav-underline nav-fill" id="processTabs" role="tablist">
-          <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="detalhes-tab" data-bs-toggle="tab" data-bs-target="#detalhes" type="button" role="tab" aria-controls="detalhes" aria-selected="true">
-              Detalhes
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="partes-tab" data-bs-toggle="tab" data-bs-target="#partes" type="button" role="tab" aria-controls="partes" aria-selected="false">
-              Partes
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tarefas-tab" data-bs-toggle="tab" data-bs-target="#tarefas" type="button" role="tab" aria-controls="tarefas" aria-selected="false">
-              Tarefas
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="push-tab" data-bs-toggle="tab" data-bs-target="#push" type="button" role="tab" aria-controls="push" aria-selected="false">
-              Push
-            </button>
-          </li>
-          <li class="nav-item" role="presentation">
-            <button class="nav-link" id="movimentacoes-tab" data-bs-toggle="tab" data-bs-target="#movimentacoes" type="button" role="tab" aria-controls="movimentacoes" aria-selected="false">
-              Movimentações
-              <span v-if="unreadMovementsCount > 0" class="badge bg-danger ms-2">{{ unreadMovementsCount }}</span>
-            </button>
-          </li>
-        </ul>
+        <div class="ad-tabs" id="processTabs" role="tablist">
+          <button class="ad-tab active" id="detalhes-tab" data-bs-toggle="tab" data-bs-target="#detalhes" type="button" role="tab" aria-controls="detalhes" aria-selected="true">
+            Detalhes
+          </button>
+          <button class="ad-tab" id="partes-tab" data-bs-toggle="tab" data-bs-target="#partes" type="button" role="tab" aria-controls="partes" aria-selected="false">
+            Partes
+          </button>
+          <button class="ad-tab" id="tarefas-tab" data-bs-toggle="tab" data-bs-target="#tarefas" type="button" role="tab" aria-controls="tarefas" aria-selected="false">
+            Tarefas
+          </button>
+          <button class="ad-tab" id="push-tab" data-bs-toggle="tab" data-bs-target="#push" type="button" role="tab" aria-controls="push" aria-selected="false">
+            Push
+          </button>
+          <button class="ad-tab" id="movimentacoes-tab" data-bs-toggle="tab" data-bs-target="#movimentacoes" type="button" role="tab" aria-controls="movimentacoes" aria-selected="false">
+            Movimentações
+            <span v-if="unreadMovementsCount > 0" class="ad-tab__badge">{{ unreadMovementsCount }}</span>
+          </button>
+        </div>
         
         <!-- Conteúdo das Tabs -->
         <div class="tab-content" id="processTabsContent">
@@ -146,7 +136,7 @@
                   
                   <div class="d-flex justify-content-end">
                     <!-- Botão de Atualizar -->
-                    <button type="submit" class="btn btn-primary" :disabled="isUpdating">
+                    <button type="submit" class="adbl-btn adbl-btn--primary" :disabled="isUpdating">
                       {{ isUpdating ? 'Atualizando...' : 'Atualizar' }}
                     </button>
                   </div>
@@ -190,15 +180,15 @@
                       <div class="fw-bold">{{ parte.name }}</div>
                       <div v-if="parte.cpf">CPF: {{ parte.cpf }}</div>
                       <div>
-                        <button 
-                          class="btn btn-outline-danger btn-sm mt-2" 
+                        <button
+                          class="adbl-btn adbl-btn--danger-soft adbl-btn--sm mt-2"
                           @click="confirmDetach(parte)"
                         >
                           <i class="bi bi-person-dash-fill"></i> Desassociar
                         </button>
                       </div>
                     </div>
-                    <span class="badge text-bg-primary rounded-pill">{{ parte.pivot.polo }}</span>
+                    <span class="ad-pill ad-pill--cat">{{ parte.pivot.polo }}</span>
                   </li>
                 </ul>
               </template>
@@ -222,8 +212,8 @@
                 <div class="mb-4">
                   <label class="d-block fw-bold mb-3">Tribunal:</label>
                   
-                  <span 
-                    class="badge bg-primary mb-2" 
+                  <span
+                    class="ad-pill ad-pill--cat mb-2"
                     v-if="tempSelectedCourt"
                   >
                     {{ tempSelectedCourt.name }}
@@ -246,8 +236,8 @@
                 <div class="mb-4">
                   <label class="d-block fw-bold mb-3">Sistema:</label>
 
-                  <span 
-                    class="badge bg-secondary mb-2" 
+                  <span
+                    class="ad-pill ad-pill--muted mb-2"
                     v-if="tempSelectedSystem"
                   >
                     {{ tempSelectedSystem.title }}
@@ -264,7 +254,7 @@
                     :searchable="false"
                     :disabled="!tempSelectedCourt || availableSystems.length === 0"
                   />
-                  <div v-if="tempSelectedCourt && availableSystems.length === 0" class="alert alert-warning mt-2">
+                  <div v-if="tempSelectedCourt && availableSystems.length === 0" class="proc-note proc-note--warn mt-2">
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     <strong>Atenção:</strong> Este tribunal não possui sistemas associados para push.
                   </div>
@@ -289,21 +279,21 @@
                   </small>
                 </div>
 
-                <div v-if="process?.lastQueryInTheSystem" class="alert alert-info">
+                <div v-if="process?.lastQueryInTheSystem" class="proc-note proc-note--info">
                   <i class="bi bi-info-circle me-2"></i>
                   <strong>Última consulta:</strong> {{ formatDate(process.lastQueryInTheSystem) }}
                 </div>
 
-                <div v-if="tempPushEnabled && canEnablePush" class="alert alert-success">
+                <div v-if="tempPushEnabled && canEnablePush" class="proc-note proc-note--success">
                   <i class="bi bi-check-circle me-2"></i>
                   <strong>Push será ativo!</strong> Este processo será monitorado automaticamente.
                   Atualizações serão detectadas em até 24 horas.
                 </div>
 
                 <div class="d-flex justify-content-end mt-4">
-                  <button 
-                    type="button" 
-                    class="btn btn-primary" 
+                  <button
+                    type="button"
+                    class="adbl-btn adbl-btn--primary"
                     @click="savePushSettings"
                     :disabled="isSavingPushSettings"
                   >
@@ -318,8 +308,8 @@
           <div class="tab-pane fade px-3" id="movimentacoes" role="tabpanel" aria-labelledby="movimentacoes-tab">
             <!-- Conteúdo para Movimentações -->
             <h5 class="adble-title">Movimentações <i class="bi bi-arrow-repeat me-1"></i></h5>
-            <button 
-              class="btn btn-sm w-100 btn-outline-primary mb-3" 
+            <button
+              class="adbl-btn adbl-btn--outline adbl-btn--block adbl-btn--sm mb-3"
               @click="runMarkAllMovementsAsRead"
               :disabled="areAllMovementsRead"
             >
@@ -334,9 +324,9 @@
                 <div>
                   <strong>{{ movement.data }}</strong>: {{ movement.teor }}
                 </div>
-                <span 
-                  class="badge rounded-pill" 
-                  :class="movement.read ? 'bg-success' : 'bg-warning'"
+                <span
+                  class="adbl-chip"
+                  :class="movement.read ? 'adbl-chip--success' : 'adbl-chip--warning'"
                 >
                   {{ movement.read ? 'Lida' : 'Não Lida' }}
                 </span>
@@ -1204,17 +1194,55 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Seus estilos aqui */
+/* Aproxima o conteúdo das abas do menu (remove o vão duplicado) */
+.tab-content {
+  margin-top: 0;
+}
+
 .form-label {
   flex: 0 0 120px;
   font-weight: 600;
   margin: 0px 0px;
+  color: var(--ad-text, #3f4757);
 }
+
+/* Selects de status: mantêm a cor semântica via :style inline (getBorderColor),
+   só refinamos a moldura para combinar com o design system. */
 .form-select {
   box-sizing: border-box;
-  border: 2px solid #00000016; /* Cor padrão do Bootstrap para bordas */
-  padding: 3px; /* Adiciona padding para que o conteúdo não encoste na borda */
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 10px;
+  padding: 8px 10px;
   flex: 1;
 }
 
+/* Notas/avisos no padrão do design system (substitui os .alert do Bootstrap) */
+.proc-note {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  border: 1px solid var(--ad-line, #e6e8ee);
+  background: #f7f8fa;
+  color: var(--ad-text, #3f4757);
+}
+.proc-note--warn {
+  background: #fbf1dc;
+  border-color: #f0e2bf;
+  color: #8a6400;
+}
+.proc-note--info {
+  background: #eef2f8;
+  border-color: #d8e2f0;
+  color: #26517f;
+}
+.proc-note--success {
+  background: #e7f4ee;
+  border-color: #cbe7d8;
+  color: #15935a;
+}
+
+/* Listas de partes/movimentações: bordas no token da marca */
+:deep(.list-group-item) {
+  border-color: var(--ad-line, #e6e8ee);
+}
 </style>

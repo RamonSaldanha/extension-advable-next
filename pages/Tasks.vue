@@ -4,29 +4,18 @@
       <DefaultHeader />
     </template>
 
-    <!-- Stats Bar + Action -->
-    <div class="stats-bar">
-      <div class="stats-row">
-        <div class="stat-chip">
-          <span class="stat-number">{{ pendingTasks.length }}</span>
-          <span class="stat-label">pendentes</span>
-        </div>
-        <div class="stat-chip stat-chip--success" v-if="completedTasks.length > 0">
-          <span class="stat-number">{{ completedTasks.length }}</span>
-          <span class="stat-label">concluídas</span>
-        </div>
-        <div class="stat-chip stat-chip--danger" v-if="urgentTasksCount > 0">
-          <span class="stat-number">{{ urgentTasksCount }}</span>
-          <span class="stat-label">urgentes</span>
-        </div>
-        <router-link to="/tasks/add" class="add-task-btn">
-          <i class="bi bi-plus"></i>
-          Nova tarefa
-        </router-link>
-      </div>
-    </div>
-
     <div class="tasks-page">
+      <!-- Cabeçalho da página -->
+      <div class="ad-page-head tasks-head">
+        <div class="tasks-head__row">
+          <h1 class="ad-page-title">Tarefas</h1>
+          <router-link to="/tasks/add" class="add-task-btn">
+            <i class="bi bi-plus"></i>
+            Nova tarefa
+          </router-link>
+        </div>
+      </div>
+
       <!-- Filters -->
       <div class="filters-section">
         <button
@@ -112,126 +101,88 @@
 
       <!-- Task Sections -->
       <div v-else class="task-sections">
-        <!-- Pending Tasks -->
-        <div v-if="pendingTasks.length > 0" class="task-group">
-          <div class="group-header">
-            <div class="group-header-left">
-              <div class="group-dot group-dot--pending"></div>
-              <span class="group-title">Pendentes</span>
-            </div>
-            <span class="group-count">{{ pendingTasks.length }}</span>
-          </div>
+        <!-- Filtros rápidos (abas) -->
+        <div class="task-tabs">
+          <button class="task-tab" :class="{ active: view === 'pending' }" @click="view = 'pending'">
+            Pendentes <span class="task-tab__count">{{ pendingTasks.length }}</span>
+          </button>
+          <button class="task-tab" :class="{ active: view === 'urgent' }" @click="view = 'urgent'">
+            Urgentes <span class="task-tab__count task-tab__count--danger">{{ urgentTasksCount }}</span>
+          </button>
+          <button class="task-tab" :class="{ active: view === 'completed' }" @click="view = 'completed'">
+            Concluídas <span class="task-tab__count task-tab__count--done">{{ completedTasks.length }}</span>
+          </button>
+        </div>
 
-          <div class="task-list">
-            <div
-              v-for="task in pendingTasks"
-              :key="task.id"
-              class="task-card"
-              :class="{ 'task-card--urgent': isUrgentTask(task) }"
-            >
-              <div class="task-card-inner">
-                <div class="task-check">
-                  <label class="check-wrapper">
-                    <input
-                      type="checkbox"
-                      :checked="task.completed"
-                      @change="toggleCompleted(task)"
-                    />
-                    <span class="check-custom"></span>
-                  </label>
+        <!-- Lista da aba ativa -->
+        <div v-if="visibleTasks.length > 0" class="task-list">
+          <div
+            v-for="task in visibleTasks"
+            :key="task.id"
+            class="task-card"
+            :class="{ 'task-card--done': task.completed, 'task-card--urgent': !task.completed && isOverdueTask(task) }"
+          >
+            <div class="task-card-inner">
+              <div class="task-body" @click="navigateToTask(task.id)">
+                <!-- Linha 1: título + categoria + prazo -->
+                <div class="task-top-row">
+                  <h6 class="task-name" :class="{ 'task-name--done': task.completed }">{{ task.title }}</h6>
+                  <span v-if="task.task_state" class="ad-pill ad-pill--cat">{{ task.task_state.title }}</span>
+                  <span
+                    v-if="!task.completed && deadlineLabel(task)"
+                    class="ad-pill"
+                    :class="isOverdueTask(task) ? 'ad-pill--late' : 'ad-pill--time'"
+                  >{{ deadlineLabel(task) }}</span>
                 </div>
 
-                <div class="task-body" @click="navigateToTask(task.id)">
-                  <div class="task-top-row">
-                    <h6 class="task-name">
-                      <i v-if="isUrgentTask(task)" class="bi bi-exclamation-circle-fill urgent-dot"></i>
-                      {{ task.title }}
-                    </h6>
-                  </div>
+                <!-- Responsável(is) atribuído(s) -->
+                <div v-if="task.collaborators && task.collaborators.length" class="task-assignees">
+                  <span v-for="c in task.collaborators.slice(0, 3)" :key="c.id" class="task-assignee">
+                    <i class="bi bi-person-fill"></i>{{ getFirstAndLastName(c.name) }}
+                  </span>
+                  <span v-if="task.collaborators.length > 3" class="task-assignee task-assignee--more">
+                    +{{ task.collaborators.length - 3 }}
+                  </span>
+                </div>
 
-                  <div class="task-meta-row">
-                    <!-- Collaborators -->
-                    <span v-if="task.collaborators && task.collaborators.length > 0" class="meta-chip meta-chip--person">
-                      <i class="bi bi-person-fill"></i>
-                      {{ task.collaborators.slice(0, 2).map(c => getFirstAndLastName(c.name)).join(', ') }}
-                      <span v-if="task.collaborators.length > 2" class="meta-extra">+{{ task.collaborators.length - 2 }}</span>
-                    </span>
-
-                    <!-- State -->
-                    <span v-if="task.task_state" class="meta-chip meta-chip--state" :style="{ '--state-color': task.task_state.color }">
-                      {{ task.task_state.title }}
-                    </span>
-
-                    <!-- Deadline -->
-                    <span v-if="task.deadline" class="meta-chip" :class="isUrgentTask(task) ? 'meta-chip--urgent' : 'meta-chip--date'">
-                      <i class="bi bi-calendar3"></i>
-                      {{ formatDeadline(task.deadline) }}
-                    </span>
-                  </div>
-
-                  <!-- Processes -->
-                  <div v-if="task.processes && task.processes.length > 0" class="task-processes">
+                <!-- Processo(s) + idade -->
+                <div
+                  v-if="(task.processes && task.processes.length) || task.created_at"
+                  class="task-bottom-row"
+                >
+                  <div class="task-processes" v-if="task.processes && task.processes.length">
                     <span
                       v-for="process in task.processes"
                       :key="process.id"
-                      class="process-chip"
+                      class="process-link"
+                      :class="{ 'process-link--muted': task.completed }"
                       :title="process.peoples?.map(p => p.name).join(', ') || 'Sem partes cadastradas'"
-                    >
-                      <i class="bi bi-folder2-open"></i>
-                      {{ formatProcessBadge(process) }}
-                    </span>
+                    >{{ formatProcessBadge(process) }}</span>
                   </div>
+                  <span v-if="task.created_at" class="task-age">{{ formatAge(task.created_at) }}</span>
                 </div>
+              </div>
+
+              <div class="task-check">
+                <label class="check-wrapper">
+                  <input
+                    type="checkbox"
+                    :checked="task.completed"
+                    @change="toggleCompleted(task)"
+                  />
+                  <span class="check-custom" :class="{ 'check-custom--done': task.completed }"></span>
+                </label>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Completed Tasks -->
-        <div v-if="completedTasks.length > 0" class="task-group">
-          <div class="group-header">
-            <div class="group-header-left">
-              <div class="group-dot group-dot--done"></div>
-              <span class="group-title">Concluídas</span>
-            </div>
-            <span class="group-count group-count--done">{{ completedTasks.length }}</span>
-          </div>
-
-          <div class="task-list">
-            <div v-for="task in completedTasks" :key="task.id" class="task-card task-card--done">
-              <div class="task-card-inner">
-                <div class="task-check">
-                  <label class="check-wrapper">
-                    <input
-                      type="checkbox"
-                      :checked="task.completed"
-                      @change="toggleCompleted(task)"
-                    />
-                    <span class="check-custom check-custom--done"></span>
-                  </label>
-                </div>
-
-                <div class="task-body" @click="navigateToTask(task.id)">
-                  <h6 class="task-name task-name--done">{{ task.title }}</h6>
-
-                  <div class="task-meta-row" v-if="(task.collaborators && task.collaborators.length > 0) || (task.processes && task.processes.length > 0)">
-                    <span v-if="task.collaborators && task.collaborators.length > 0" class="meta-chip meta-chip--muted">
-                      <i class="bi bi-person-fill"></i>
-                      {{ task.collaborators.map(c => getFirstAndLastName(c.name)).join(', ') }}
-                    </span>
-                    <span
-                      v-for="process in task.processes"
-                      :key="process.id"
-                      class="meta-chip meta-chip--muted"
-                      :title="process.peoples?.map(p => p.name).join(', ') || 'Sem partes cadastradas'"
-                    >
-                      {{ formatProcessBadge(process) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <!-- Aba sem itens -->
+        <div v-else class="tab-empty">
+          <i class="bi bi-inbox"></i>
+          <p>
+            {{ view === 'urgent' ? 'Nenhuma tarefa urgente.' : view === 'completed' ? 'Nenhuma tarefa concluída.' : 'Nenhuma tarefa pendente.' }}
+          </p>
         </div>
       </div>
     </div>
@@ -253,6 +204,7 @@ const loading = ref(true);
 const taskStates = ref([]);
 const teamUsers = ref([]);
 const filtersExpanded = ref(false);
+const view = ref('pending'); // aba ativa: pending | urgent | completed
 const filters = ref({
   collaboratorId: '',
   taskStateId: '',
@@ -407,9 +359,47 @@ const completedTasks = computed(() => {
   return filteredTasks.value.filter(task => task.completed);
 });
 
+// Aba ativa (filtro rápido): pending | urgent | completed
+const visibleTasks = computed(() => {
+  if (view.value === 'completed') return completedTasks.value;
+  if (view.value === 'urgent') return pendingTasks.value.filter(task => isUrgentTask(task));
+  return pendingTasks.value;
+});
+
 const isUrgentTask = (task) => {
   if (!task.deadline) return false;
   return new Date(task.deadline) <= new Date(Date.now() + 2 * 24 * 60 * 60 * 1000); // Próximas 48h
+};
+
+const isOverdueTask = (task) => {
+  if (!task.deadline) return false;
+  return new Date(task.deadline) < new Date(); // Prazo já vencido
+};
+
+// Rótulo curto do prazo (pílula): Atrasado / Hoje / Amanhã / Em N dias / dd/mm
+const deadlineLabel = (task) => {
+  if (!task.deadline) return '';
+  const date = new Date(task.deadline);
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.round((startDate - startToday) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'Atrasado';
+  if (diffDays === 0) return 'Hoje';
+  if (diffDays === 1) return 'Amanhã';
+  if (diffDays <= 7) return `Em ${diffDays} dias`;
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+};
+
+// Idade da tarefa a partir da criação (texto cinza à direita): Hoje / Ontem / N dias atrás
+const formatAge = (createdAt) => {
+  if (!createdAt) return '';
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+  if (diffDays <= 0) return 'Hoje';
+  if (diffDays === 1) return 'Ontem';
+  return `${diffDays} dias atrás`;
 };
 
 const toggleCompleted = async (task) => {
@@ -457,8 +447,8 @@ onMounted(() => {
   --tk-text: #1a1d23;
   --tk-text-secondary: #5f6878;
   --tk-text-muted: #8b95a5;
-  --tk-primary: #3b6fea;
-  --tk-primary-soft: #eef3ff;
+  --tk-primary: #16223f;
+  --tk-primary-soft: #eef1f7;
   --tk-success: #16a34a;
   --tk-success-soft: #ecfdf3;
   --tk-danger: #dc2626;
@@ -487,7 +477,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  background: #eef3ff;
+  background: #eef1f7;
   border-radius: 20px;
   font-size: 12px;
   line-height: 1;
@@ -511,7 +501,7 @@ onMounted(() => {
 
 .stat-number {
   font-weight: 700;
-  color: #3b6fea;
+  color: #16223f;
   font-size: 13px;
 }
 
@@ -526,7 +516,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   padding: 6px 14px;
-  background: #3b6fea;
+  background: #16223f;
   color: #fff;
   border: none;
   border-radius: 20px;
@@ -538,15 +528,33 @@ onMounted(() => {
 }
 
 .add-task-btn:hover {
-  background: #2d5bd0;
+  background: #0f1a32;
   color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 111, 234, 0.3);
+}
+
+.add-task-btn:active {
+  transform: translateY(1px);
 }
 
 .add-task-btn i {
   font-size: 16px;
   font-weight: 700;
+}
+
+/* ── Cabeçalho da página ── */
+.tasks-head {
+  padding: 4px 2px 14px;
+}
+
+.tasks-head__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tasks-head .add-task-btn {
+  margin-left: 0;
 }
 
 /* ── Page Container ── */
@@ -577,8 +585,8 @@ onMounted(() => {
 }
 
 .filter-toggle:hover {
-  border-color: #3b6fea;
-  color: #3b6fea;
+  border-color: #16223f;
+  color: #16223f;
 }
 
 .filter-toggle-left {
@@ -592,7 +600,7 @@ onMounted(() => {
 }
 
 .filter-count {
-  background: #3b6fea;
+  background: #16223f;
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -670,8 +678,8 @@ onMounted(() => {
 }
 
 .filter-input:focus {
-  border-color: #3b6fea;
-  box-shadow: 0 0 0 3px rgba(59, 111, 234, 0.1);
+  border-color: #16223f;
+  box-shadow: 0 0 0 3px rgba(22, 34, 63, 0.1);
 }
 
 .filter-input::placeholder {
@@ -693,8 +701,8 @@ onMounted(() => {
 }
 
 .filter-select:focus {
-  border-color: #3b6fea;
-  box-shadow: 0 0 0 3px rgba(59, 111, 234, 0.1);
+  border-color: #16223f;
+  box-shadow: 0 0 0 3px rgba(22, 34, 63, 0.1);
 }
 
 .clear-filters-btn {
@@ -736,7 +744,7 @@ onMounted(() => {
   height: 40px;
   border-radius: 50%;
   border: 3px solid #e8eaed;
-  border-top-color: #3b6fea;
+  border-top-color: #16223f;
   animation: spin 0.8s linear infinite;
   margin-bottom: 16px;
 }
@@ -749,7 +757,7 @@ onMounted(() => {
   width: 56px;
   height: 56px;
   border-radius: 16px;
-  background: #eef3ff;
+  background: #eef1f7;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -758,7 +766,7 @@ onMounted(() => {
 
 .empty-icon-wrap i {
   font-size: 24px;
-  color: #3b6fea;
+  color: #16223f;
 }
 
 .state-title {
@@ -779,7 +787,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   padding: 8px 18px;
-  background: #3b6fea;
+  background: #16223f;
   color: #fff;
   border-radius: 20px;
   font-size: 13px;
@@ -789,17 +797,128 @@ onMounted(() => {
 }
 
 .empty-cta:hover {
-  background: #2d5bd0;
+  background: #0f1a32;
   color: #fff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 111, 234, 0.3);
+}
+
+.empty-cta:active {
+  transform: translateY(1px);
 }
 
 /* ── Task Groups ── */
 .task-sections {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+}
+
+/* ── Abas de filtro rápido ── */
+.task-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.task-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ad-text, #3f4757);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.task-tab:hover {
+  border-color: #cfd5e0;
+}
+
+.task-tab.active {
+  background: var(--ad-navy, #16223f);
+  border-color: var(--ad-navy, #16223f);
+  color: #fff;
+}
+
+.task-tab__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #eef1f7;
+  color: var(--ad-navy, #16223f);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.task-tab__count--danger {
+  background: #f6dadb;
+  color: #a23a44;
+}
+
+.task-tab__count--done {
+  background: #e7f4ee;
+  color: #15935a;
+}
+
+.task-tab.active .task-tab__count {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+/* ── Responsáveis atribuídos ── */
+.task-assignees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.task-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ad-text, #3f4757);
+  background: #eef0f4;
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.task-assignee i {
+  font-size: 11px;
+  color: var(--ad-muted, #8b93a3);
+}
+
+.task-assignee--more {
+  color: var(--ad-muted, #8b93a3);
+}
+
+/* ── Aba sem itens ── */
+.tab-empty {
+  text-align: center;
+  color: var(--ad-muted, #8b93a3);
+  padding: 36px 16px;
+}
+
+.tab-empty i {
+  font-size: 34px;
+  color: #cfd3dd;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.tab-empty p {
+  margin: 0;
+  font-size: 13.5px;
 }
 
 .task-group {
@@ -828,8 +947,8 @@ onMounted(() => {
 }
 
 .group-dot--pending {
-  background: #3b6fea;
-  box-shadow: 0 0 0 3px rgba(59, 111, 234, 0.15);
+  background: #16223f;
+  box-shadow: 0 0 0 3px rgba(22, 34, 63, 0.15);
 }
 
 .group-dot--done {
@@ -838,18 +957,18 @@ onMounted(() => {
 }
 
 .group-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #1a1d23;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ad-ink, #1a2233);
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .group-count {
   font-size: 12px;
   font-weight: 700;
-  color: #3b6fea;
-  background: #eef3ff;
+  color: #16223f;
+  background: #eef1f7;
   padding: 2px 8px;
   border-radius: 10px;
 }
@@ -869,16 +988,14 @@ onMounted(() => {
 /* ── Task Card ── */
 .task-card {
   background: #ffffff;
-  border: 1px solid #e8eaed;
-  border-radius: 10px;
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 12px;
   transition: all 0.2s ease;
   overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .task-card:hover {
-  border-color: #d0d5dd;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  border-color: #cfd5e0;
 }
 
 .task-card--urgent {
@@ -897,8 +1014,8 @@ onMounted(() => {
 .task-card-inner {
   display: flex;
   align-items: flex-start;
-  padding: 10px 12px;
-  gap: 10px;
+  padding: 14px 16px;
+  gap: 12px;
 }
 
 /* ── Checkbox ── */
@@ -943,8 +1060,8 @@ onMounted(() => {
 }
 
 .check-wrapper:hover .check-custom {
-  border-color: #3b6fea;
-  background: #eef3ff;
+  border-color: #16223f;
+  background: #eef1f7;
 }
 
 .check-wrapper input:checked + .check-custom {
@@ -977,17 +1094,17 @@ onMounted(() => {
 
 .task-top-row {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
 }
 
 .task-name {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
-  color: #1a1d23;
+  color: var(--ad-ink, #1a2233);
   margin: 0;
-  line-height: 1.35;
+  line-height: 1.3;
   word-break: break-word;
 }
 
@@ -1028,8 +1145,8 @@ onMounted(() => {
 }
 
 .meta-chip--person {
-  color: #6d28d9;
-  background: #f5f3ff;
+  color: #3f4757;
+  background: #eef0f4;
 }
 
 .meta-chip--state {
@@ -1044,13 +1161,14 @@ onMounted(() => {
 }
 
 .meta-chip--date {
-  color: #5f6878;
-  background: #f1f3f5;
+  color: #26517f;
+  background: #d6e6f7;
+  font-weight: 600;
 }
 
 .meta-chip--urgent {
-  color: #dc2626;
-  background: #fef2f2;
+  color: #a23a44;
+  background: #f6dadb;
   font-weight: 600;
 }
 
@@ -1065,30 +1183,62 @@ onMounted(() => {
   opacity: 0.7;
 }
 
-/* ── Process Chips ── */
+/* ── Linha inferior: processo(s) + idade ── */
+.task-bottom-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 8px;
+}
+
 .task-processes {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 2px;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
-.process-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
+.process-link {
+  font-size: 12.5px;
   font-weight: 500;
-  color: #1d6fb5;
-  background: #e9f3fd;
-  padding: 3px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
+  color: var(--ad-text, #3f4757);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: #c7ccd6;
+  cursor: pointer;
+  word-break: break-word;
+  transition: color 0.12s ease, text-decoration-color 0.12s ease;
 }
 
-.process-chip i {
-  font-size: 10px;
-  opacity: 0.7;
+.process-link:hover {
+  color: var(--ad-navy, #16223f);
+  text-decoration-color: var(--ad-navy, #16223f);
+}
+
+.process-link--muted {
+  color: var(--ad-muted, #8b93a3);
+}
+
+.task-age {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ad-muted, #8b93a3);
+  white-space: nowrap;
+  padding-top: 1px;
+}
+
+.task-collab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: var(--ad-muted, #8b93a3);
+}
+
+.task-collab i {
+  font-size: 12px;
 }
 
 /* ── Animations ── */

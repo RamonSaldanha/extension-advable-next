@@ -6,49 +6,44 @@
     </template>
     
     <component v-if="currentComponent" :is="currentComponent"></component>
-    <div v-else class="dashboard-content">
-      <div v-if="errorMessage">
+    <div v-else class="adbl-page dashboard-content">
+      <div v-if="errorMessage" class="adbl-empty">
+        <i class="bi bi-exclamation-circle"></i>
         <p>{{ errorMessage }}</p>
       </div>
       <div v-else>
         <!-- Calendário de Tarefas -->
-        <Card title="Calendário de Tarefas" icon="bi-calendar3" class="mb-3">
-          <template #body>
+        <h2 class="ad-section-title">Calendário</h2>
+        <div class="adbl-card cal-card">
+          <div class="adbl-card__body">
             <TaskCalendar ref="taskCalendar" />
-          </template>
-        </Card>
+          </div>
+        </div>
 
         <!-- Ranking dos Tribunais -->
-        <Card title="Ranking por Tribunal" icon="bi-building">
-          <template #listGroup>
-            <div v-if="isLoading" class="mt-3">
-              <p class="p-3">Carregando...</p>
-            </div>
-            <div class="list-group list-group-flush" v-else>
+        <h2 class="ad-section-title section-spaced">Ranking por Tribunal</h2>
+        <div class="adbl-card">
+          <div v-if="isLoading" class="adbl-card__body">
+            <p class="loading-text">Carregando...</p>
+          </div>
+          <ul v-else class="rank-list">
+            <li v-for="(court, index) in topCourts" :key="court.court_systems_id">
               <a
-                v-for="(court, index) in topCourts"
-                :key="court.court_systems_id"
                 :href="court.court_system.private_page"
                 target="_blank"
-                class="list-group-item p-3 list-group-item-action d-flex justify-content-between align-items-center"
+                class="rank-item"
               >
-                <div class="d-flex align-items-center">
-                  <div class="ranking-position me-3">
-                    <span class="badge bg-primary">#{{ index + 1 }}</span>
-                  </div>
-                  <div>
-                    <p class="fw-semibold mb-1">{{ court.court_system.title }}</p>
-                    <div class="text-muted small">{{ court.court_system.slug || 'N/A' }}</div>
-                  </div>
+                <span class="rank-pos">{{ index + 1 }}</span>
+                <div class="rank-info">
+                  <div class="rank-name">{{ court.court_system.title }}</div>
+                  <div class="rank-slug">{{ court.court_system.slug || 'N/A' }}</div>
                 </div>
-                <div class="ranking-count">
-                  <span class="badge bg-secondary">{{ court.process_count }} processos</span>
-                  <span class="ms-2"><i class="bi bi-caret-right-fill"></i></span>
-                </div>
+                <span class="rank-count">{{ court.process_count }}</span>
+                <i class="bi bi-chevron-right rank-chev"></i>
               </a>
-            </div>
-          </template>
-        </Card>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   </Layout>
@@ -65,7 +60,6 @@ import DefaultHeader from '@/components/DefaultHeader.vue';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/api/axios';
 
-import Card from '@/components/Card.vue';
 import TaskCalendar from '@/components/TaskCalendar.vue';
 
 const isLoading = ref(false);
@@ -191,30 +185,98 @@ watchEffect(() => {
 </script>
 
 <style scoped>
+.section-spaced {
+  margin-top: 20px;
+}
 
-.ranking-position .badge {
-  min-width: 32px;
+.cal-card :deep(.adbl-card__body) {
+  padding: 12px;
+}
+
+.loading-text {
+  margin: 0;
+  color: var(--ad-muted, #8b93a3);
+  font-size: 13.5px;
+}
+
+/* ── Ranking por tribunal ── */
+.rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-top: 1px solid var(--ad-line, #e6e8ee);
+  text-decoration: none;
+  color: inherit;
+  transition: background-color 0.15s ease;
+}
+
+.rank-list li:first-child .rank-item {
+  border-top: none;
+}
+
+.rank-item:hover {
+  background-color: #f7f8fa;
+}
+
+.rank-pos {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--ad-navy, #16223f);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rank-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-name {
+  font-size: 13.5px;
   font-weight: 600;
-  font-size: 0.75rem;
+  color: var(--ad-ink, #1a2233);
+  line-height: 1.3;
 }
 
-.ranking-count .badge {
-  font-weight: 600;
-  font-size: 0.7rem;
+.rank-slug {
+  font-size: 12px;
+  color: var(--ad-muted, #8b93a3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.list-group-item {
-  transition: all 0.2s ease;
-  border-left: 3px solid transparent;
+.rank-count {
+  flex-shrink: 0;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #eef1f7;
+  color: var(--ad-navy, #16223f);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.list-group-item:hover {
-  background-color: #f8f9fa;
-  border-left-color: #0d6efd;
-  transform: translateX(2px);
-}
-
-.mb-3 {
-  margin-bottom: 1rem;
+.rank-chev {
+  flex-shrink: 0;
+  color: var(--ad-muted, #8b93a3);
+  font-size: 13px;
 }
 </style>

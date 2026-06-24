@@ -9,11 +9,11 @@
       <!-- Instruções simples e objetivas -->
       <div class="whatsapp-info">
         <div class="text-center">
-          <i class="bi bi-whatsapp fs-1 text-success mb-4"></i>
-          <h2 class="mb-4 text-success">Integração WhatsApp</h2>
-          
+          <i class="bi bi-whatsapp fs-1 wa-icon mb-3"></i>
+          <h1 class="ad-page-title mb-4">Integração WhatsApp</h1>
+
           <div class="instructions-card">
-            <h4 class="mb-4">Como usar:</h4>
+            <h4 class="instructions-title mb-4">Como usar:</h4>
             <div class="steps">
               <div class="step">
                 <span class="step-number">1</span>
@@ -61,20 +61,20 @@
               
               <!-- Botão de teste -->
               <div class="mt-3">
-                <button 
-                  @click="testWhatsAppConnection" 
-                  class="btn btn-outline-primary btn-sm me-2"
+                <button
+                  @click="testWhatsAppConnection"
+                  class="adbl-btn adbl-btn--primary adbl-btn--sm me-2"
                   :disabled="!isListening"
                 >
-                  <i class="bi bi-broadcast me-1"></i>
-                  Testar Conexão WhatsApp
+                  <i class="bi bi-broadcast"></i>
+                  Testar Conexão
                 </button>
-                
-                <button 
-                  @click="navigateToClients" 
-                  class="btn btn-outline-secondary btn-sm"
+
+                <button
+                  @click="navigateToClients"
+                  class="adbl-btn adbl-btn--outline adbl-btn--sm"
                 >
-                  <i class="bi bi-people me-1"></i>
+                  <i class="bi bi-people"></i>
                   Ir para Clientes
                 </button>
               </div>
@@ -251,11 +251,22 @@ onMounted(() => {
   width: 100%;
 }
 
+/* Ícone do WhatsApp: mantém o verde do canal */
+.wa-icon {
+  color: #25d366;
+}
+
 .instructions-card {
-  background: #f8f9fa;
-  border-radius: 12px;
+  background: #fff;
+  border-radius: 14px;
   padding: 2rem;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--ad-line, #e6e8ee);
+}
+
+.instructions-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ad-ink, #1a2233);
 }
 
 .steps {
@@ -276,7 +287,7 @@ onMounted(() => {
   justify-content: center;
   width: 40px;
   height: 40px;
-  background: #25d366;
+  background: #16223f;
   color: white;
   border-radius: 50%;
   font-weight: bold;
@@ -285,7 +296,7 @@ onMounted(() => {
 
 .step-text {
   font-size: 1.1rem;
-  color: #333;
+  color: var(--ad-text, #3f4757);
   font-weight: 500;
 }
 
@@ -293,8 +304,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
+  border-radius: 10px;
+  border: 1px solid var(--ad-line, #e6e8ee);
   background: #ffffff;
   transition: all 0.3s ease;
 }
@@ -316,9 +327,9 @@ onMounted(() => {
 .current-chat-info {
   padding: 12px 16px;
   border-radius: 8px;
-  background: #e3f2fd;
-  border: 1px solid #bbdefb;
-  color: #1976d2;
+  background: #eef2f8;
+  border: 1px solid #d3e0f0;
+  color: #26517f;
 }
 
 @keyframes pulse {
@@ -347,13 +358,13 @@ onMounted(() => {
 }
 
 .btn-outline-primary {
-  color: #0d6efd;
-  border-color: #0d6efd;
+  color: #16223f;
+  border-color: #16223f;
   background: transparent;
 }
 
 .btn-outline-primary:hover:not(:disabled) {
-  background: #0d6efd;
+  background: #16223f;
   color: white;
 }
 

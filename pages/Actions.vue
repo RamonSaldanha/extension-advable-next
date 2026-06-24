@@ -541,11 +541,11 @@ const exportToExcel = () => {
 }
 
 .action-icon--blue {
-  background: #eef3ff;
-  color: #3b6fea;
+  background: #eef1f7;
+  color: #16223f;
 }
 
-.action-icon--blue i { color: #3b6fea; }
+.action-icon--blue i { color: #16223f; }
 
 .action-info {
   flex: 1;
@@ -593,7 +593,7 @@ const exportToExcel = () => {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: #3b6fea;
+  color: #16223f;
   font-weight: 500;
   margin-top: 4px;
 }
@@ -622,7 +622,7 @@ const exportToExcel = () => {
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: #3b6fea;
+  background: #16223f;
   color: #fff;
   display: flex;
   align-items: center;
@@ -633,9 +633,9 @@ const exportToExcel = () => {
 }
 
 .play-btn:hover:not(:disabled) {
-  background: #2d5bd0;
+  background: #0f1a32;
   transform: scale(1.08);
-  box-shadow: 0 4px 14px rgba(59, 111, 234, 0.35);
+  box-shadow: 0 4px 14px rgba(22, 34, 63, 0.35);
 }
 
 .play-btn:active:not(:disabled) {
@@ -663,8 +663,8 @@ const exportToExcel = () => {
 .spinner-small--blue {
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(59, 111, 234, 0.2);
-  border-top-color: #3b6fea;
+  border: 2px solid rgba(22, 34, 63, 0.2);
+  border-top-color: #16223f;
   display: inline-block;
 }
 
@@ -695,7 +695,7 @@ const exportToExcel = () => {
   padding: 6px 12px;
   border: none;
   background: none;
-  color: #3b6fea;
+  color: #16223f;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -704,7 +704,7 @@ const exportToExcel = () => {
 }
 
 .back-btn:hover {
-  background: #eef3ff;
+  background: #eef1f7;
 }
 
 .back-btn i {
@@ -732,9 +732,9 @@ const exportToExcel = () => {
 }
 
 .icon-btn:hover {
-  border-color: #3b6fea;
-  color: #3b6fea;
-  background: #eef3ff;
+  border-color: #16223f;
+  color: #16223f;
+  background: #eef1f7;
 }
 
 .results-title-bar {
@@ -753,7 +753,7 @@ const exportToExcel = () => {
 
 .results-title-icon {
   font-size: 20px;
-  color: #3b6fea;
+  color: #16223f;
 }
 
 .results-title {
@@ -770,7 +770,7 @@ const exportToExcel = () => {
 }
 
 .results-subtitle strong {
-  color: #3b6fea;
+  color: #16223f;
 }
 
 .results-team-name {
@@ -785,7 +785,7 @@ const exportToExcel = () => {
 
 .results-team-name i {
   font-size: 10px;
-  color: #3b6fea;
+  color: #16223f;
 }
 
 .results-body {
@@ -884,7 +884,7 @@ const exportToExcel = () => {
 .exp-tipo {
   font-size: 11px;
   font-weight: 600;
-  color: #6d28d9;
+  color: #3f4757;
   background: #f5f3ff;
   padding: 2px 8px;
   border-radius: 4px;
@@ -904,7 +904,7 @@ const exportToExcel = () => {
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #1d6fb5;
+  color: #26517f;
 }
 
 .exp-processo i {
@@ -929,7 +929,7 @@ const exportToExcel = () => {
 
 .exp-destinatario i {
   font-size: 10px;
-  color: #6d28d9;
+  color: #3f4757;
 }
 
 .exp-meta {
@@ -1006,13 +1006,13 @@ const exportToExcel = () => {
 
 /* ── Kanban Button ── */
 .icon-btn--primary {
-  border-color: #3b6fea;
-  color: #3b6fea;
-  background: #eef3ff;
+  border-color: #16223f;
+  color: #16223f;
+  background: #eef1f7;
 }
 
 .icon-btn--primary:hover {
-  background: #3b6fea;
+  background: #16223f;
   color: #fff;
 }
 
@@ -1047,7 +1047,7 @@ const exportToExcel = () => {
 
 .modal-header-icon {
   font-size: 18px;
-  color: #3b6fea;
+  color: #16223f;
 }
 
 .modal-title {
@@ -1077,13 +1077,13 @@ const exportToExcel = () => {
 }
 
 .modal-summary i {
-  color: #3b6fea;
+  color: #16223f;
   margin-top: 1px;
   flex-shrink: 0;
 }
 
 .modal-summary strong {
-  color: #3b6fea;
+  color: #16223f;
 }
 
 .modal-checkbox-label {
@@ -1098,7 +1098,7 @@ const exportToExcel = () => {
 
 .modal-checkbox {
   margin-top: 2px;
-  accent-color: #3b6fea;
+  accent-color: #16223f;
   flex-shrink: 0;
 }
 
@@ -1123,7 +1123,7 @@ const exportToExcel = () => {
 }
 
 .modal-select:focus {
-  border-color: #3b6fea;
+  border-color: #16223f;
 }
 
 .modal-result {
@@ -1183,12 +1183,12 @@ const exportToExcel = () => {
 }
 
 .modal-btn--primary {
-  background: #3b6fea;
+  background: #16223f;
   color: #fff;
 }
 
 .modal-btn--primary:hover:not(:disabled) {
-  background: #2d5bd0;
+  background: #0f1a32;
 }
 
 .modal-btn--primary:disabled {

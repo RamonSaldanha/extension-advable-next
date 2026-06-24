@@ -268,12 +268,28 @@ defineExpose({
 
 /* Estilos do Calendário */
 :deep(.fc-theme-bootstrap5) {
-  --fc-border-color: #dee2e6;
-  --fc-button-bg-color: #6c757d;
-  --fc-button-border-color: #6c757d;
-  --fc-button-hover-bg-color: #5c636a;
-  --fc-button-hover-border-color: #565e64;
-  --fc-today-bg-color: rgba(13, 110, 253, 0.1);
+  --fc-border-color: #e6e8ee;
+  --fc-button-bg-color: #16223f;
+  --fc-button-border-color: #16223f;
+  --fc-button-hover-bg-color: #0f1a32;
+  --fc-button-hover-border-color: #0f1a32;
+  --fc-button-active-bg-color: #0f1a32;
+  --fc-button-active-border-color: #0f1a32;
+  --fc-today-bg-color: transparent;
+}
+
+/* "Hoje" em círculo navy, como no mockup */
+:deep(.fc-day-today .fc-daygrid-day-number) {
+  background: #16223f;
+  color: #fff;
+  border-radius: 999px;
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  font-weight: 600;
 }
 
 /* Header do calendário mais compacto */
@@ -333,8 +349,8 @@ defineExpose({
 }
 
 :deep(.fc-event-success) {
-  background-color: #0d6efd !important;
-  border-color: #0a58ca !important;
+  background-color: #16223f !important;
+  border-color: #0f1a32 !important;
   color: white !important;
 }
 
@@ -368,7 +384,7 @@ defineExpose({
 }
 
 :deep(.fc-daygrid-day-frame:hover) {
-  background-color: rgba(13, 110, 253, 0.1) !important;
+  background-color: rgba(22, 34, 63, 0.1) !important;
 }
 
 :deep(.fc-daygrid-day-top) {
@@ -404,7 +420,7 @@ defineExpose({
   position: absolute;
   bottom: 2px;
   right: 2px;
-  color: rgba(13, 110, 253, 0.8);
+  color: rgba(22, 34, 63, 0.8);
   font-size: 0.6rem;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.9);
@@ -418,7 +434,7 @@ defineExpose({
 
 /* Hover só em datas válidas (hoje + futuro) */
 :deep(.fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):hover) {
-  background-color: rgba(13, 110, 253, 0.05) !important;
+  background-color: rgba(22, 34, 63, 0.05) !important;
 }
 
 /* Ocultar hover em dias desabilitados e passados */

@@ -4,211 +4,124 @@
       <DefaultHeader />
     </template>
 
-    <div class="container">
+    <div class="adbl-page">
       <Loader v-if="loading" />
-      <div class="d-flex justify-content-between align-items-center">
-        <button 
-          class="btn btn-sm btn-outline-secondary my-3" 
-          @click="handleBack"
-        >
+
+      <div class="adbl-subhead">
+        <button class="adbl-back" @click="handleBack">
           <i class="bi bi-arrow-left-short"></i>
           Voltar
         </button>
-        <div class="fw-semibold fs-6 text-muted">
-          {{ person.name }}
-        </div>
+        <div class="adbl-subhead__ctx">{{ person.name }}</div>
       </div>
-      <Card title="Editar Pessoa" icon="bi-person">
-        <template #body>
-          <!-- Informações Básicas -->
-          <div class="mb-2">
-            <label class="fw-bold mb-1">Nome</label>
-            <input 
-              class="form-control form-control-sm" 
-              type="text" 
-              v-model="person.name"
-            />
+
+      <div class="adbl-card">
+        <div class="adbl-card__head">
+          <span class="adbl-card__head-icon"><i class="bi bi-person"></i></span>
+          <span class="adbl-card__title">Editar Pessoa</span>
+        </div>
+        <div class="adbl-card__body">
+          <div class="adbl-field">
+            <label class="adbl-label">Nome</label>
+            <input class="adbl-input" type="text" v-model="person.name" />
           </div>
-  
-          <div class="mb-2">
-            <label class="fw-bold mb-1">WhatsApp</label>
-            <input 
-              class="form-control form-control-sm" 
-              type="text" 
-              v-maska="'(##) 9 ####-####'"
-              v-model="person.whatsapp"
-            />
+
+          <div class="adbl-field">
+            <label class="adbl-label">WhatsApp</label>
+            <input class="adbl-input" type="text" v-maska="'(##) 9 ####-####'" v-model="person.whatsapp" />
           </div>
-  
-          <div class="mb-2">
-            <label class="fw-bold mb-1">Email</label>
-            <input
-              class="form-control form-control-sm"
-              type="email"
-              v-model="person.email"
-            />
+
+          <div class="adbl-field">
+            <label class="adbl-label">Email</label>
+            <input class="adbl-input" type="email" v-model="person.email" />
           </div>
-  
-          <!-- Documentos -->
-          <details class="mt-3">
-            <summary class="fw-bold">Documentos</summary>
-            <div class="mt-2">
-              <div class="mb-2">
-                <label class="fw-bold mb-1">CPF</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-maska="'###.###.###-##'"
-                  v-model="person.cpf"
-                />
+
+          <details class="adbl-accordion" style="margin-top: 16px">
+            <summary>Documentos</summary>
+            <div class="adbl-accordion__body">
+              <div class="adbl-field">
+                <label class="adbl-label">CPF</label>
+                <input class="adbl-input" type="text" v-maska="'###.###.###-##'" v-model="person.cpf" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">RG</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="person.rg"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">RG</label>
+                <input class="adbl-input" type="text" v-model="person.rg" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">CNPJ</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-maska="'##.###.###/####-##'"
-                  v-model="person.cnpj"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">CNPJ</label>
+                <input class="adbl-input" type="text" v-maska="'##.###.###/####-##'" v-model="person.cnpj" />
               </div>
             </div>
           </details>
-  
-          <!-- Informações Pessoais -->
-          <details class="mt-3">
-            <summary class="fw-bold">Informações Pessoais</summary>
-            <div class="mt-2">
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Nacionalidade</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="person.nationality"
-                />
+
+          <details class="adbl-accordion">
+            <summary>Informações Pessoais</summary>
+            <div class="adbl-accordion__body">
+              <div class="adbl-field">
+                <label class="adbl-label">Nacionalidade</label>
+                <input class="adbl-input" type="text" v-model="person.nationality" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Profissão</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="person.occupation"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">Profissão</label>
+                <input class="adbl-input" type="text" v-model="person.occupation" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Data de Nascimento</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-maska="'##/##/####'"
-                  v-model="person.birthday"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">Data de Nascimento</label>
+                <input class="adbl-input" type="text" v-maska="'##/##/####'" v-model="person.birthday" />
               </div>
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Estado Civil</label>
-                <select
-                class="form-select form-select-sm"
-                v-model="person.civil_status"
-                >
-                <option value="solteiro">Solteiro(a)</option>
-                <option value="casado">Casado(a)</option>
-                <option value="união estável">União Estável</option>
-                <option value="divorciado">Divorciado(a)</option>
-                <option value="viúvo">Viúvo(a)</option>
-              </select>
+              <div class="adbl-field">
+                <label class="adbl-label">Estado Civil</label>
+                <select class="adbl-select" v-model="person.civil_status">
+                  <option value="solteiro">Solteiro(a)</option>
+                  <option value="casado">Casado(a)</option>
+                  <option value="união estável">União Estável</option>
+                  <option value="divorciado">Divorciado(a)</option>
+                  <option value="viúvo">Viúvo(a)</option>
+                </select>
               </div>
             </div>
           </details>
-  
-          <!-- Endereço -->
-          <details class="mt-3">
-            <summary class="fw-bold">Endereço</summary>
-            <div class="mt-2">
-              <div class="mb-2">
-                <label class="fw-bold mb-1">CEP</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-maska="'#####-###'"
-                  v-model="person.address_zip"
-                />
+
+          <details class="adbl-accordion">
+            <summary>Endereço</summary>
+            <div class="adbl-accordion__body">
+              <div class="adbl-field">
+                <label class="adbl-label">CEP</label>
+                <input class="adbl-input" type="text" v-maska="'#####-###'" v-model="person.address_zip" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Cidade</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="person.address_city"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">Cidade</label>
+                <input class="adbl-input" type="text" v-model="person.address_city" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Estado</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-maska="'##'"
-                  v-model="person.address_state"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">Estado</label>
+                <input class="adbl-input" type="text" v-maska="'##'" v-model="person.address_state" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Logradouro</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="person.address_name"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">Logradouro</label>
+                <input class="adbl-input" type="text" v-model="person.address_name" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Número</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="person.address_num"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">Número</label>
+                <input class="adbl-input" type="text" v-model="person.address_num" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Complemento</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="person.address_extra"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">Complemento</label>
+                <input class="adbl-input" type="text" v-model="person.address_extra" />
               </div>
-  
-              <div class="mb-2">
-                <label class="fw-bold mb-1">Bairro</label>
-                <input
-                  class="form-control form-control-sm"
-                  type="text"
-                  v-model="person.district"
-                />
+              <div class="adbl-field">
+                <label class="adbl-label">Bairro</label>
+                <input class="adbl-input" type="text" v-model="person.district" />
               </div>
             </div>
           </details>
-          <button 
-            class="btn btn-primary mt-3"
-            @click="updatePerson"
-          >
+
+          <button class="adbl-btn adbl-btn--primary adbl-btn--block" style="margin-top: 6px" @click="updatePerson">
+            <i class="bi bi-check2"></i>
             Salvar Alterações
           </button>
-        </template>
-      </Card>
+        </div>
+      </div>
     </div>
   </Layout>
 </template>
@@ -252,7 +165,7 @@ const person = ref({
 
 const fetchAddressByZip = async (zip) => {
   if (!zip) return; // Retorna se o CEP for nulo
-  
+
   try {
     const cleanedZip = zip.replace(/\D/g, '');
     if (cleanedZip.length === 8) {
@@ -270,7 +183,7 @@ const fetchAddressByZip = async (zip) => {
 };
 
 // Watch com verificação de carregamento inicial
-watch(() => person.value.address_zip, 
+watch(() => person.value.address_zip,
   debounce((newZip) => {
     if (!isInitialLoad.value) {
       fetchAddressByZip(newZip);
@@ -355,6 +268,4 @@ onMounted(() => {
 })
 </script>
 
-<style scoped>
-/* Estilos específicos se necessário */
-</style>
+<style scoped></style>

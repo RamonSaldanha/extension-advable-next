@@ -34,6 +34,16 @@ export function getPersonById(id) {
   return api.get(`/person/${id}`).then((response) => response.data);
 }
 
+// Anotação (única) de uma pessoa. Retorna a nota mais recente (ou null).
+export function getPersonNote(id) {
+  return api.get(`/person/${id}/note`).then((response) => response.data);
+}
+
+// Cria/atualiza a anotação da pessoa. `data` = { content } (HTML do Quill).
+export function savePersonNote(id, data) {
+  return api.put(`/person/${id}/note`, data).then((response) => response.data);
+}
+
 export function updateApiPerson(id, data) {
   return api.put(`/person/${id}`, data).then((response) => response.data);
 }

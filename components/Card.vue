@@ -32,16 +32,35 @@
 
 <style scoped>
   .card {
-    border: none;
-    border-radius: 0;
+    border: 1px solid var(--ad-line, #e6e8ee);
+    border-radius: 14px;
     box-shadow: none;
+    overflow: hidden;
+    background: #fff;
   }
-  
+
   .card-header {
-    border-bottom: 1px solid #eaeaea;
-    background-color: transparent;
+    border-bottom: 1px solid var(--ad-line, #e6e8ee);
+    background-color: #fff;
+    padding: 13px 16px;
+    color: var(--ad-ink, #1a2233);
   }
-  
+
+  .card-header :deep(.fw-bold) {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ad-ink, #1a2233);
+  }
+
+  .card-header i {
+    color: var(--ad-navy, #16223f);
+  }
+
+  :deep(.card-body) {
+    padding: 16px;
+  }
 </style>
 
 <script>

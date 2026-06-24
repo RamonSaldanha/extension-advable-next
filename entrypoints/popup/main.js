@@ -8,6 +8,9 @@ import money from 'v-money';
 
 import 'bootstrap';
 import 'bootstrap-icons/font/bootstrap-icons.min.css';
+// Fontes da marca (empacotadas; funcionam offline, sem CDN/CSP)
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/hanken-grotesk';
 import './style.scss';
 
 // Detecta se estamos dentro de um iframe (offcanvas) para ajustar dimensões
@@ -25,9 +28,24 @@ app.use(router);
 app.use(money, { precision: 4 });
 app.mount('#app');
 
-// Restaurar a rota ao iniciar a aplicação
+// Espelha um token já persistido (sessão existente) para o background, para que
+// o lookup do cluster de ícones funcione sem exigir novo login.
+try {
+  const existingToken = localStorage.getItem('token');
+  if (existingToken && typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+    browser.storage.local.set({ token: existingToken });
+  }
+} catch (e) {
+  /* storage indisponível */
+}
+
+// Restaurar a última rota só quando NÃO houver deep-link explícito no hash
+// (ex.: o cluster abre o iframe direto em #/person/note/...). Assim a rota
+// passada pelo ícone é respeitada em vez de sobrescrita pela última visitada.
+const currentHash = window.location.hash || '';
+const hasDeepLink = currentHash !== '' && currentHash !== '#/' && currentHash !== '#';
 const lastRoute = localStorage.getItem('lastRoute');
-if (lastRoute) {
+if (lastRoute && !hasDeepLink) {
   router.replace(lastRoute);
 }
 

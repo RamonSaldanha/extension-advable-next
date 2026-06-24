@@ -5,9 +5,11 @@
       <DefaultHeader />
     </template>
 
-    <div>
-      <h1>Sobre</h1>
-      <p>Esta é uma extensão em desenvolvimento.</p>
+    <div class="adbl-page">
+      <div class="ad-page-head">
+        <h1 class="ad-page-title">Sobre</h1>
+        <p class="ad-page-sub">Esta é uma extensão em desenvolvimento.</p>
+      </div>
     </div>
 
     <template #footer>

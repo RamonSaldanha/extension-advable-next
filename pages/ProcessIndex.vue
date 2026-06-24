@@ -100,8 +100,11 @@ watchEffect(() => {
 }
 
 .empty-state-title {
-    color: #495057;
+    font-family: var(--ad-font-display, 'Fraunces Variable', serif);
+    font-optical-sizing: auto;
+    color: var(--ad-ink, #1a2233);
     font-weight: 600;
+    font-size: 1.2rem;
     margin-bottom: 1rem;
 }
 

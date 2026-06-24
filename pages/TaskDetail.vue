@@ -7,28 +7,26 @@
       />
     </template>
     
-    <!-- Top Actions Bar -->
-    <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-light border-bottom">
-      <button 
-        type="button" 
-        class="btn btn-outline-secondary btn-sm d-flex align-items-center"
+    <!-- Barra de ações -->
+    <div class="adbl-subhead edit-actionbar">
+      <button
+        type="button"
+        class="adbl-back"
         @click="router.push('/tasks')"
       >
-        <i class="bi bi-arrow-left"></i>
+        <i class="bi bi-arrow-left"></i> Voltar
       </button>
-      
-      <div class="text-center">
-        <span class="small text-muted fw-medium">Editando tarefa</span>
-      </div>
-      
-      <button 
-        type="submit" 
-        class="btn btn-primary btn-sm d-flex align-items-center"
+
+      <span class="adbl-subhead__ctx">Editando tarefa</span>
+
+      <button
+        type="submit"
+        class="adbl-btn adbl-btn--primary adbl-btn--sm"
         @click="handleUpdateTask"
         :disabled="updating"
       >
-        <div v-if="updating" class="spinner-border spinner-xs me-2"></div>
-        <i v-else class="bi bi-check-circle me-2"></i>
+        <span v-if="updating" class="spinner-border spinner-xs"></span>
+        <i v-else class="bi bi-check-circle"></i>
         {{ updating ? 'Salvando...' : 'Salvar' }}
       </button>
     </div>
@@ -47,7 +45,7 @@
         <h4 class="alert-heading">Erro ao carregar tarefa</h4>
         <p>{{ error }}</p>
         <hr>
-        <button class="btn btn-outline-danger" @click="fetchTaskDetails">
+        <button class="adbl-btn adbl-btn--danger-soft" @click="fetchTaskDetails">
           <i class="bi bi-arrow-clockwise me-2"></i>
           Tentar novamente
         </button>
@@ -58,60 +56,54 @@
    
 
         <form @submit.prevent="handleUpdateTask">
-          <!-- Top Row: Title and State -->
-          <div class="row mb-3">
-            <div class="col-md-8">
-              <label for="taskTitle" class="form-label">Título da Tarefa</label>
-              <input 
-                type="text" 
-                class="form-control" 
-                id="taskTitle" 
-                v-model="editForm.title" 
-                required
-                :disabled="updating"
-              >
-            </div>
-            <div class="col-md-4">
-              <label for="taskState" class="form-label">Estágio</label>
-              <select 
-                class="form-select" 
-                id="taskState" 
-                v-model="editForm.task_state_id" 
-                required
-                :disabled="updating"
-              >
-                <option disabled value="">Selecione um estágio</option>
-                <option v-for="state in taskStates" :key="state.id" :value="state.id">
-                  {{ state.title }}
-                </option>
-              </select>
-            </div>
-            <div class="col-md-4">
-              <label for="taskDeadline" class="form-label">Prazo</label>
-              
-              <VueDatePicker
-                id="taskDeadline"
-                v-model="editForm.deadline"
-                :enable-time-picker="true"
-                format="dd/MM/yyyy HH:mm"
-                locale="pt-BR"
-                :clearable="true"
-                auto-apply
-                :disabled="updating"
-                :min-date="new Date()"
-                :time-picker-inline="true"
-                :minutes-increment="15"
-              />
-              
-              <div class="form-text">
-                <small>Para compromissos com horário específico</small>
-              </div>
-            </div>
+          <!-- Título / Estágio / Prazo -->
+          <div class="adbl-field">
+            <label for="taskTitle" class="adbl-label">Título da tarefa</label>
+            <input
+              type="text"
+              class="adbl-input"
+              id="taskTitle"
+              v-model="editForm.title"
+              required
+              :disabled="updating"
+            >
+          </div>
+          <div class="adbl-field">
+            <label for="taskState" class="adbl-label">Estágio</label>
+            <select
+              class="adbl-select"
+              id="taskState"
+              v-model="editForm.task_state_id"
+              required
+              :disabled="updating"
+            >
+              <option disabled value="">Selecione um estágio</option>
+              <option v-for="state in taskStates" :key="state.id" :value="state.id">
+                {{ state.title }}
+              </option>
+            </select>
+          </div>
+          <div class="adbl-field">
+            <label for="taskDeadline" class="adbl-label">Prazo</label>
+            <VueDatePicker
+              id="taskDeadline"
+              v-model="editForm.deadline"
+              :enable-time-picker="true"
+              format="dd/MM/yyyy HH:mm"
+              locale="pt-BR"
+              :clearable="true"
+              auto-apply
+              :disabled="updating"
+              :min-date="new Date()"
+              :time-picker-inline="true"
+              :minutes-increment="15"
+            />
+            <div class="adbl-muted-note">Para compromissos com horário específico</div>
           </div>
 
-          <!-- Description Field -->
-          <div class="mb-3">
-            <label class="form-label">Descrição</label>
+          <!-- Descrição -->
+          <div class="adbl-field">
+            <label class="adbl-label">Descrição</label>
             <QuillEditor
               v-model:content="editForm.description"
               contentType="html"
@@ -130,7 +122,7 @@
                   <div class="position-relative mb-3">
                     <input
                       type="text"
-                      class="form-control form-control-sm"
+                      class="adbl-input"
                       id="processSearch"
                       v-model="processSearchQuery"
                       @input="handleProcessSearch"
@@ -232,8 +224,7 @@
                       <span
                         v-for="collaborator in editForm.collaborators"
                         :key="collaborator.id"
-                        class="badge bg-success d-flex align-items-center gap-1"
-                        style="font-size: 11px;"
+                        class="ad-pill ad-pill--cat"
                       >
                         <i class="bi bi-person-fill"></i>
                         {{ getFirstAndLastName(collaborator.name) }}
@@ -480,6 +471,15 @@ onMounted(() => {
   max-width: 100%;
 }
 
+/* Barra de ações (Voltar + contexto + Salvar) */
+.edit-actionbar {
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--ad-line, #e6e8ee);
+}
+
 .hover-bg-light:hover {
   background-color: #f8f9fa;
 }
@@ -535,14 +535,14 @@ onMounted(() => {
 }
 
 .selected-item {
-  background-color: #f8f9fc;
-  border: 1px solid #e3e6f0;
+  background-color: #f7f8fa;
+  border: 1px solid var(--ad-line, #e6e8ee);
   transition: all 0.2s ease;
 }
 
 .selected-item:hover {
-  background-color: #eef2f9;
-  border-color: #d1d9e6;
+  background-color: #eef1f7;
+  border-color: #d6dae4;
 }
 
 .btn-remove {
@@ -558,21 +558,23 @@ onMounted(() => {
   font-size: 14px;
   line-height: 1;
   flex-shrink: 0;
-  border: 1px solid #dc3545;
+  background: #fff;
+  border: 1px solid #f0c9cd;
+  color: var(--adbl-danger, #c2333f);
 }
 
 .btn-remove:hover {
-  background-color: #dc3545;
-  border-color: #dc3545;
+  background-color: var(--adbl-danger, #c2333f);
+  border-color: var(--adbl-danger, #c2333f);
   color: white;
 }
 
 /* Collaborator selection */
 .collaborator-selection {
-  border: 1px solid #e3e6f0;
-  border-radius: 6px;
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 10px;
   padding: 10px;
-  background-color: #f8f9fc;
+  background-color: #f7f8fa;
 }
 
 .form-check-sm {

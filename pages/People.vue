@@ -4,87 +4,96 @@
       <DefaultHeader />
     </template>
 
-    <div class="container">
+    <div class="adbl-page">
       <Loader v-if="loading" />
 
-      <div class="d-flex justify-content-between align-items-center my-3">
-        <div class="fs-5 fw-semibold mb-0">Clientes</div>
-        <button class="btn btn-dark btn-sm" @click="toggleCreate">
+      <div class="ad-page-head people-head">
+        <h1 class="ad-page-title">Clientes</h1>
+        <button class="adbl-btn adbl-btn--primary adbl-btn--sm" @click="toggleCreate">
           <i class="bi" :class="creating ? 'bi-x-lg' : 'bi-plus-lg'"></i>
           {{ creating ? 'Cancelar' : 'Novo cliente' }}
         </button>
       </div>
 
-      <!-- Cadastro do zero (sem precisar de chat ativo) -->
-      <Card v-if="creating" title="Cadastrar nova pessoa" class="mb-3">
-        <template #body>
-          <div class="mb-2">
-            <label class="fw-bold mb-1">Nome</label>
-            <input class="form-control form-control-sm" type="text" v-model="newPerson.name" />
+      <div class="adbl-stack">
+        <!-- Cadastro do zero (sem precisar de chat ativo) -->
+        <div v-if="creating" class="adbl-card">
+          <div class="adbl-card__head">
+            <span class="adbl-card__head-icon"><i class="bi bi-person-plus"></i></span>
+            <span class="adbl-card__title">Cadastrar pessoa</span>
           </div>
-          <div class="mb-2">
-            <label class="fw-bold mb-1">WhatsApp</label>
-            <input
-              class="form-control form-control-sm"
-              type="text"
-              v-maska="'(##) #####-####'"
-              placeholder="(84) 98732-9303 — estrangeiro: +DDI..."
-              v-model="newPerson.whatsapp"
-            />
-          </div>
-          <div class="mb-2">
-            <label class="fw-bold mb-1">Email</label>
-            <input class="form-control form-control-sm" type="email" v-model="newPerson.email" />
-          </div>
-
-          <details class="mt-2">
-            <summary class="fw-bold">Documentos</summary>
-            <div class="mt-2">
-              <div class="mb-2">
-                <label class="fw-bold mb-1">CPF</label>
-                <input class="form-control form-control-sm" type="text" v-maska="'###.###.###-##'" v-model="newPerson.cpf" />
-              </div>
-              <div class="mb-2">
-                <label class="fw-bold mb-1">CNPJ</label>
-                <input class="form-control form-control-sm" type="text" v-maska="'##.###.###/####-##'" v-model="newPerson.cnpj" />
-              </div>
+          <div class="adbl-card__body">
+            <div class="adbl-field">
+              <label class="adbl-label">Nome</label>
+              <input class="adbl-input" type="text" v-model="newPerson.name" />
             </div>
-          </details>
+            <div class="adbl-field">
+              <label class="adbl-label">WhatsApp</label>
+              <input
+                class="adbl-input"
+                type="text"
+                v-maska="'(##) #####-####'"
+                placeholder="(84) 98732-9303 — estrangeiro: +DDI..."
+                v-model="newPerson.whatsapp"
+              />
+            </div>
+            <div class="adbl-field">
+              <label class="adbl-label">Email</label>
+              <input class="adbl-input" type="email" v-model="newPerson.email" />
+            </div>
 
-          <button class="btn btn-primary mt-3" :disabled="saving" @click="savePerson">Salvar</button>
-        </template>
-      </Card>
-
-      <!-- Busca / listagem -->
-      <Card title="Buscar clientes">
-        <template #body>
-          <input
-            class="form-control form-control-sm mb-3"
-            type="text"
-            placeholder="Buscar por nome"
-            v-model="query"
-          />
-
-          <ul class="list-group list-group-flush" v-if="people.length">
-            <li
-              v-for="p in people"
-              :key="p.id"
-              class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-            >
-              <div>
-                <div class="fw-semibold">{{ p.name }}</div>
-                <div class="small text-muted">
-                  <i class="bi bi-whatsapp"></i> {{ p.whatsapp || 'sem WhatsApp' }}
+            <details class="adbl-accordion">
+              <summary>Documentos</summary>
+              <div class="adbl-accordion__body">
+                <div class="adbl-field">
+                  <label class="adbl-label">CPF</label>
+                  <input class="adbl-input" type="text" v-maska="'###.###.###-##'" v-model="newPerson.cpf" />
+                </div>
+                <div class="adbl-field">
+                  <label class="adbl-label">CNPJ</label>
+                  <input class="adbl-input" type="text" v-maska="'##.###.###/####-##'" v-model="newPerson.cnpj" />
                 </div>
               </div>
-              <router-link :to="`/people/edit/${p.id}`" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-pencil-square"></i> Abrir
-              </router-link>
-            </li>
-          </ul>
-          <div v-else class="text-muted small">Nenhum cliente para mostrar.</div>
-        </template>
-      </Card>
+            </details>
+
+            <button class="adbl-btn adbl-btn--primary adbl-btn--block save-btn" :disabled="saving" @click="savePerson">
+              Salvar
+            </button>
+          </div>
+        </div>
+
+        <!-- Busca / listagem -->
+        <div class="adbl-card">
+          <div class="adbl-card__head">
+            <span class="adbl-card__head-icon"><i class="bi bi-people"></i></span>
+            <span class="adbl-card__title">Buscar clientes</span>
+          </div>
+          <div class="adbl-card__body">
+            <div class="ad-search people-search">
+              <span class="ad-search__icon"><i class="bi bi-search"></i></span>
+              <input class="ad-search__input" type="text" placeholder="Buscar por nome" v-model="query" />
+            </div>
+
+            <ul class="people-list" v-if="people.length">
+              <li v-for="p in people" :key="p.id" class="people-item">
+                <div class="people-item__info">
+                  <div class="people-item__name">{{ p.name }}</div>
+                  <div class="people-item__contact">
+                    <i class="bi bi-whatsapp"></i> {{ p.whatsapp || 'sem WhatsApp' }}
+                  </div>
+                </div>
+                <router-link :to="`/people/edit/${p.id}`" class="adbl-btn adbl-btn--outline adbl-btn--sm">
+                  <i class="bi bi-pencil-square"></i> Abrir
+                </router-link>
+              </li>
+            </ul>
+            <div v-else class="adbl-empty">
+              <i class="bi bi-people"></i>
+              <p>Nenhum cliente para mostrar.</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </Layout>
 </template>
@@ -93,7 +102,6 @@
 import { ref, onMounted, watch } from 'vue';
 import Layout from '@/components/Layout.vue';
 import DefaultHeader from '@/components/DefaultHeader.vue';
-import Card from '@/components/Card.vue';
 import Loader from '@/components/Loader.vue';
 import Swal from 'sweetalert2';
 import debounce from 'lodash.debounce';
@@ -149,4 +157,53 @@ const savePerson = async () => {
 onMounted(() => load());
 </script>
 
-<style scoped></style>
+<style scoped>
+.people-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.people-search {
+  margin-bottom: 12px;
+}
+
+.save-btn {
+  margin-top: 14px;
+}
+
+.people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.people-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 0;
+  border-top: 1px solid var(--ad-line, #e6e8ee);
+}
+
+.people-item:first-child {
+  border-top: none;
+}
+
+.people-item__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ad-ink, #1a2233);
+}
+
+.people-item__contact {
+  font-size: 12.5px;
+  color: var(--ad-muted, #8b93a3);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+</style>

@@ -22,6 +22,8 @@ export default defineContentScript({
     // isolado, e responde via window.postMessage.
     let lastKey = null;
     let currentChatInfo = null; // cache do último chat ativo conhecido
+    let clusterState = { registered: false, hasNote: false, personId: null };
+    let refreshClusterImpl = null; // atribuído ao criar o cluster (só no WhatsApp)
 
     function notifyChatChange(chatInfo) {
       if (!chatInfo || !chatInfo.chatId) return;
@@ -58,6 +60,7 @@ export default defineContentScript({
       lastKey = chatId;
 
       notifyChatChange(info);
+      if (typeof refreshClusterImpl === 'function') refreshClusterImpl(info);
     }
 
     // Pede à bridge (main world) o chat ativo atual.
@@ -128,84 +131,220 @@ export default defineContentScript({
       }, 500);
     }
 
-    // Evita duplicação do ícone
-    if (document.getElementById('advable-floating-icon')) return;
+    // Evita duplicação do cluster
+    if (document.getElementById('advable-icon-cluster')) return;
 
-    // === Cria o botão flutuante (FAB circular fixo) ===
-    const floatingIcon = document.createElement('div');
-    floatingIcon.id = 'advable-floating-icon';
+    const isWhatsApp = window.location.href.includes('web.whatsapp.com');
 
-    floatingIcon.innerHTML = `
-      <img src="${browser.runtime.getURL('/icon48.png')}" alt="Advable" style="width: 28px; height: 28px; display: block; pointer-events: none;" />
-    `;
+    // SVGs (Bootstrap Icons) dos ícones contextuais. Cor herda do `color` do botão.
+    const ICON_PERSON = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" style="pointer-events:none;">
+        <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664z"/>
+      </svg>`;
+    const ICON_PERSON_ADD = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" viewBox="0 0 16 16" style="pointer-events:none;">
+        <path d="M6 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H1s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C9.516 10.68 8.289 10 6 10c-2.29 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664z"/>
+        <path fill-rule="evenodd" d="M13.5 5a.5.5 0 0 1 .5.5V7h1.5a.5.5 0 0 1 0 1H14v1.5a.5.5 0 0 1-1 0V8h-1.5a.5.5 0 0 1 0-1H13V5.5a.5.5 0 0 1 .5-.5"/>
+      </svg>`;
+    const ICON_NOTE = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" style="pointer-events:none;">
+        <path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+        <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2m0 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/>
+      </svg>`;
 
-    Object.assign(floatingIcon.style, {
+    // === Cluster de ícones flutuante (canto inferior direito) ===
+    const cluster = document.createElement('div');
+    cluster.id = 'advable-icon-cluster';
+    Object.assign(cluster.style, {
       all: 'unset',
       position: 'fixed',
-      // Acima da barra de composição do WhatsApp para não cobrir o botão de enviar.
-      bottom: '104px',
+      bottom: '104px', // acima da barra de composição do WhatsApp
       right: '24px',
-      width: '56px',
-      height: '56px',
-      boxSizing: 'border-box',
-      backgroundColor: '#FFFFFF',
       zIndex: '2147483646',
-      cursor: 'pointer',
-      display: 'flex',
-      justifyContent: 'center',
+      display: 'none', // só aparece quando há chat ativo (no WhatsApp)
+      flexDirection: 'column',
+      gap: '10px',
       alignItems: 'center',
-      borderRadius: '50%',
-      border: '1px solid rgba(0, 0, 0, 0.10)',
-      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.28)',
-      transition: 'box-shadow 0.18s ease',
     });
 
-    // Botão para esconder o FAB (aparece apenas no hover)
-    const hideButton = document.createElement('span');
-    hideButton.innerHTML = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="currentColor" viewBox="0 0 16 16">
-        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
-      </svg>
-    `;
-    Object.assign(hideButton.style, {
-      position: 'absolute',
-      top: '-2px',
-      right: '-2px',
-      width: '18px',
-      height: '18px',
-      borderRadius: '50%',
-      backgroundColor: '#322d78',
-      color: '#FFFFFF',
-      cursor: 'pointer',
-      display: 'none',
-      justifyContent: 'center',
-      alignItems: 'center',
-      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
-    });
-    floatingIcon.appendChild(hideButton);
-    hideButton.addEventListener('click', (event) => {
-      event.stopPropagation();
-      floatingIcon.style.display = 'none';
-    });
+    // Cria um botão circular branco com glifo navy e sombra preta (sem gradiente).
+    function makeIconButton(html, title) {
+      const btn = document.createElement('div');
+      btn.title = title || '';
+      Object.assign(btn.style, {
+        all: 'unset',
+        width: '42px',
+        height: '42px',
+        boxSizing: 'border-box',
+        backgroundColor: '#FFFFFF',
+        color: '#16223f',
+        cursor: 'pointer',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: '50%',
+        border: '1px solid rgba(0, 0, 0, 0.10)',
+        boxShadow: '0 4px 14px rgba(0, 0, 0, 0.25)',
+        transition: 'box-shadow 0.18s ease, transform 0.12s ease',
+        position: 'relative',
+      });
+      btn.innerHTML = html;
+      btn.addEventListener('mouseover', () => {
+        btn.style.boxShadow = '0 8px 22px rgba(0, 0, 0, 0.38)';
+        btn.style.transform = 'translateY(-1px)';
+      });
+      btn.addEventListener('mouseout', () => {
+        btn.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.25)';
+        btn.style.transform = 'none';
+      });
+      return btn;
+    }
 
-    // Efeito de hover (apenas realça a sombra e revela o "x") — sem escalar a logo
-    floatingIcon.addEventListener('mouseover', () => {
-      floatingIcon.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.40)';
-      hideButton.style.display = 'flex';
-    });
+    // Abre o modal (iframe do popup) numa rota específica do hash. Se já estiver
+    // aberto, fecha e reabre na rota desejada.
+    function openModal(hashRoute) {
+      if (document.getElementById('advable-modal')) {
+        closeModal();
+        setTimeout(() => createModal(hashRoute), 220);
+        return;
+      }
+      createModal(hashRoute);
+    }
 
-    floatingIcon.addEventListener('mouseout', () => {
-      floatingIcon.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.28)';
-      hideButton.style.display = 'none';
-    });
+    // Deep-links (ficha e notas) do chat ativo, carregando os identificadores
+    // exatos (raw = id estável; phone = telefone) para resolução determinística.
+    function chatHashRoutes() {
+      const info = currentChatInfo || {};
+      const raw = info.chatId || '';
+      const phone = info.phone || '';
+      const searchKey = phone || raw;
+      const name = info.chatName || 'Chat';
+      const qs = `?raw=${encodeURIComponent(raw)}&phone=${encodeURIComponent(phone)}`;
+      return {
+        person: `/person/search/${encodeURIComponent(searchKey)}/${encodeURIComponent(name)}${qs}`,
+        note: `/person/note/${encodeURIComponent(searchKey)}/${encodeURIComponent(name)}${qs}`,
+      };
+    }
 
-    document.body.appendChild(floatingIcon);
+    if (isWhatsApp) {
+      const personBtn = makeIconButton(ICON_PERSON_ADD, 'Cadastrar cliente');
+      const noteBtn = makeIconButton(ICON_NOTE, 'Anotações');
 
-    // Evento de clique para abrir o modal
-    floatingIcon.addEventListener('click', () => {
-      if (document.getElementById('advable-modal')) return;
-      createModal();
-    });
+      // Ponto indicador de "tem anotação".
+      const noteDot = document.createElement('span');
+      Object.assign(noteDot.style, {
+        position: 'absolute',
+        top: '5px',
+        right: '5px',
+        width: '9px',
+        height: '9px',
+        borderRadius: '50%',
+        backgroundColor: '#2e7d32',
+        border: '2px solid #FFFFFF',
+        display: 'none',
+        pointerEvents: 'none',
+      });
+      noteBtn.appendChild(noteDot);
+
+      cluster.appendChild(personBtn);
+      cluster.appendChild(noteBtn);
+
+      personBtn.addEventListener('click', () => openModal(chatHashRoutes().person));
+      noteBtn.addEventListener('click', () => {
+        const r = chatHashRoutes();
+        // Sem cliente cadastrado, manda para a ficha (que oferece cadastro/vínculo).
+        openModal(clusterState.registered ? r.note : r.person);
+      });
+
+      // Atualiza os glifos a partir do resultado do lookup de registro.
+      function updateClusterForChat(state) {
+        clusterState = state;
+        personBtn.innerHTML = state.registered ? ICON_PERSON : ICON_PERSON_ADD;
+        personBtn.title = state.registered ? 'Ver cliente' : 'Cadastrar cliente';
+        noteDot.style.display = state.registered && state.hasNote ? 'block' : 'none';
+      }
+
+      let lookupTimer = null;
+      refreshClusterImpl = function (info) {
+        if (!info || !info.chatId) {
+          cluster.style.display = 'none';
+          return;
+        }
+        cluster.style.display = 'flex';
+        applyClusterPlacement();
+        clearTimeout(lookupTimer);
+        lookupTimer = setTimeout(() => {
+          browser.runtime
+            .sendMessage({ type: 'LOOKUP_PERSON', phone: info.phone || '', chatId: info.chatId || '' })
+            .then((res) => {
+              if (!res) return;
+              updateClusterForChat({
+                registered: !!res.registered,
+                hasNote: !!res.hasNote,
+                personId: res.personId || null,
+              });
+            })
+            .catch(() => {
+              /* sem token / offline: mantém o estado atual */
+            });
+        }, 250);
+      };
+
+      // Se um chat já foi detectado antes do cluster existir, atualiza já.
+      if (currentChatInfo) refreshClusterImpl(currentChatInfo);
+    } else {
+      // PJe/jus.br: ponto de entrada simples para abrir o painel (não há chat).
+      const logoBtn = makeIconButton(
+        `<img src="${browser.runtime.getURL('/icon48.png')}" alt="Advable" style="width:24px;height:24px;display:block;pointer-events:none;" />`,
+        'Abrir Advable'
+      );
+      logoBtn.addEventListener('click', () => openModal('/dashboard'));
+      cluster.appendChild(logoBtn);
+      cluster.style.display = 'flex';
+    }
+
+    document.body.appendChild(cluster);
+
+    // === Reposicionamento quando um arquivo abre em tela cheia ===
+    // O WhatsApp abre imagens/vídeos/PDFs num visualizador fullscreen cujos
+    // controles ficam à direita (zoom etc.), colidindo com o cluster. Detectamos
+    // o visualizador (sem depender de classes internas do WhatsApp) checando se o
+    // centro da tela ainda pertence a #main; se não, sobe o cluster para o topo.
+    function isFullscreenViewerOpen() {
+      try {
+        const el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
+        if (!el) return false;
+        if (el.closest('#advable-modal') || el.closest('#advable-icon-cluster')) return false;
+        return !el.closest('#main');
+      } catch (e) {
+        return false;
+      }
+    }
+
+    function applyClusterPlacement() {
+      if (!isWhatsApp) return;
+      if (isFullscreenViewerOpen()) {
+        cluster.style.top = '76px';
+        cluster.style.bottom = 'auto';
+      } else {
+        cluster.style.top = 'auto';
+        cluster.style.bottom = '104px';
+      }
+    }
+
+    let placementTimer = null;
+    function scheduleClusterPlacement() {
+      clearTimeout(placementTimer);
+      placementTimer = setTimeout(applyClusterPlacement, 120);
+    }
+
+    if (isWhatsApp) {
+      applyClusterPlacement();
+      // Fechar o visualizador com Esc também precisa restaurar a posição.
+      document.addEventListener('keyup', (e) => {
+        if (e.key === 'Escape') scheduleClusterPlacement();
+      }, true);
+    }
 
     // === Observadores de mudanças ===
     // Em vez de raspar o DOM, cada gatilho apenas pede o chat ativo à bridge;
@@ -226,6 +365,7 @@ export default defineContentScript({
       () => {
         if (window.location.href.includes('web.whatsapp.com')) {
           scheduleActiveChatCheck(400);
+          scheduleClusterPlacement();
         }
       },
       true
@@ -258,7 +398,7 @@ export default defineContentScript({
       return Math.max(min, Math.min(max, value));
     }
 
-    function createModal() {
+    function createModal(hashRoute = '/dashboard') {
       const maxWidth = getModalMaxWidth();
 
       // Restaura largura/posição salvas (com limites)
@@ -321,7 +461,7 @@ export default defineContentScript({
         display: 'flex',
         alignItems: 'center',
         gap: '10px',
-        color: '#322d78',
+        color: '#16223f',
         fontSize: '15px',
         fontWeight: '600',
       });
@@ -417,7 +557,7 @@ export default defineContentScript({
       });
 
       const iframe = document.createElement('iframe');
-      iframe.src = browser.runtime.getURL('/popup.html#/dashboard');
+      iframe.src = browser.runtime.getURL('/popup.html#' + (hashRoute || '/dashboard'));
       Object.assign(iframe.style, {
         all: 'unset',
         width: '100%',

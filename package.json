@@ -1,7 +1,7 @@
 {
   "name": "advable-extension-wxt",
   "private": true,
-  "version": "2.3.0",
+  "version": "2.8.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -13,6 +13,8 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/hanken-grotesk": "^5.2.8",
     "@fullcalendar/bootstrap5": "^6.1.19",
     "@fullcalendar/core": "^6.1.19",
     "@fullcalendar/daygrid": "^6.1.19",

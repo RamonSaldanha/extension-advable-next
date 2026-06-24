@@ -1,6 +1,7 @@
-$primary: #322d78;
+$primary: #16223f;
 $enable-rounded: true;
 $font-size-base: .9rem;
+$font-family-sans-serif: 'Hanken Grotesk Variable', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
 @import "bootstrap/scss/bootstrap";
 
@@ -271,4 +272,633 @@ rating {
     -webkit-font-smoothing: antialiased !important;
     -moz-osx-font-smoothing: grayscale !important;
   }
+}
+
+/* ============================================================
+   Advable — design system das páginas de clientes
+   Tema claro, acento roxo da marca, cores sólidas (sem gradiente),
+   rótulos em caixa-alta com tracking, cartões nítidos.
+   ============================================================ */
+:root {
+  /* ---- Identidade navy (nova marca da extensão) ---- */
+  --ad-navy: #16223f;
+  --ad-navy-700: #0f1a32;
+  --ad-navy-600: #21345b;
+  --ad-ink: #1a2233;
+  --ad-text: #3f4757;
+  --ad-muted: #8b93a3;
+  --ad-line: #e6e8ee;
+  --ad-surface: #ffffff;
+  --ad-success: #15935a;
+  --ad-danger: #c2333f;
+  --ad-warning: #c4860b;
+  /* Pílulas/badges */
+  --ad-pill-cat-bg: #1b2c4b;  --ad-pill-cat-fg: #ffffff;
+  --ad-pill-time-bg: #d6e6f7; --ad-pill-time-fg: #26517f;
+  --ad-pill-late-bg: #f6dadb; --ad-pill-late-fg: #a23a44;
+  /* Tipografia */
+  --ad-font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+  --ad-font-sans: 'Hanken Grotesk Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* ---- Aliases dos tokens antigos "purple" -> navy ----
+     Mantém os nomes usados pelas telas .adbl-* (Person, EditPerson, etc.)
+     para que herdem o navy sem reescrever os templates. */
+  --adbl-purple: var(--ad-navy);
+  --adbl-purple-dark: var(--ad-navy-700);
+  --adbl-purple-soft: #eef1f7;
+  --adbl-ink: var(--ad-ink);
+  --adbl-text: var(--ad-text);
+  --adbl-muted: var(--ad-muted);
+  --adbl-line: var(--ad-line);
+  --adbl-surface: #f7f8fa;
+  --adbl-success: var(--ad-success);
+  --adbl-danger: var(--ad-danger);
+  --adbl-warning: var(--ad-warning);
+  --adbl-radius: 14px;
+  --adbl-radius-sm: 10px;
+  --adbl-shadow: 0 1px 2px rgba(20, 28, 50, 0.04), 0 6px 16px rgba(20, 28, 50, 0.05);
+}
+
+/* ============================================================
+   Tipografia base: corpo/menu em Hanken Grotesk; títulos
+   editoriais em Fraunces apenas via .ad-display/.ad-page-title.
+   ============================================================ */
+body {
+  font-family: var(--ad-font-sans);
+  color: var(--ad-text);
+}
+
+/* ---- Cabeçalho de página (título serif + subtítulo) ---- */
+.ad-page-head {
+  padding: 4px 2px 14px;
+}
+.ad-display,
+.ad-page-title {
+  font-family: var(--ad-font-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ad-ink);
+  line-height: 1.1;
+  margin: 0;
+}
+.ad-page-title {
+  font-size: 27px;
+}
+.ad-page-sub {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--ad-muted);
+  font-weight: 500;
+}
+.ad-section-title {
+  font-family: var(--ad-font-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--ad-ink);
+  letter-spacing: -0.01em;
+  margin: 0 0 10px;
+}
+
+/* ---- Pílulas / badges unificadas ---- */
+.ad-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 3px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.ad-pill i { font-size: 11px; }
+.ad-pill--cat   { background: var(--ad-pill-cat-bg);  color: var(--ad-pill-cat-fg); }
+.ad-pill--time  { background: var(--ad-pill-time-bg); color: var(--ad-pill-time-fg); }
+.ad-pill--late  { background: var(--ad-pill-late-bg); color: var(--ad-pill-late-fg); }
+.ad-pill--muted { background: #eef0f4; color: var(--ad-text); }
+
+/* ---- Busca em pill (ícone em círculo navy, como no mockup) ---- */
+.ad-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--ad-line);
+  border-radius: 999px;
+  padding: 6px 16px 6px 6px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ad-search:focus-within {
+  border-color: var(--ad-navy);
+  box-shadow: 0 0 0 3px rgba(22, 34, 63, 0.10);
+}
+.ad-search__icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--ad-navy);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.ad-search__input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  color: var(--ad-ink);
+  font-family: var(--ad-font-sans);
+}
+.ad-search__input::placeholder { color: var(--ad-muted); }
+
+/* ---- Abas (sublinhado navy no ativo, mesma linguagem do menu) ----
+   Funciona com o plugin de tabs do Bootstrap (data-bs-toggle="tab"),
+   que apenas alterna a classe .active no botão clicado. */
+.ad-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  margin: 0 0 16px;
+  padding: 0 2px;
+  list-style: none;
+  border-bottom: 1px solid var(--ad-line);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.ad-tabs::-webkit-scrollbar { display: none; }
+.ad-tab {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 8px 10px;
+  margin-bottom: -1px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: var(--ad-text);
+  font-family: var(--ad-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.ad-tab:hover { color: var(--ad-navy); }
+.ad-tab.active {
+  color: var(--ad-navy);
+  border-bottom-color: var(--ad-navy);
+}
+.ad-tab__badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ad-pill-late-bg);
+  color: var(--ad-pill-late-fg);
+  font-size: 10.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adbl-page {
+  padding: 16px;
+  color: var(--adbl-text);
+}
+.adbl-stack > * + * {
+  margin-top: 14px;
+}
+
+/* Subheader: Voltar + contexto */
+.adbl-subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.adbl-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--adbl-line);
+  background: #fff;
+  color: var(--adbl-text);
+  border-radius: 999px;
+  padding: 5px 14px 5px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.adbl-back:hover {
+  border-color: var(--adbl-purple);
+  color: var(--adbl-purple);
+}
+.adbl-subhead__ctx {
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--adbl-muted);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cartão */
+.adbl-card {
+  background: #fff;
+  border: 1px solid var(--adbl-line);
+  border-radius: var(--adbl-radius);
+  overflow: hidden;
+}
+.adbl-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--adbl-line);
+}
+.adbl-card__head-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--adbl-purple-soft);
+  color: var(--adbl-purple);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+.adbl-card__title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--adbl-ink);
+}
+.adbl-card__count {
+  margin-left: auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--adbl-purple-soft);
+  color: var(--adbl-purple);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.adbl-card__body {
+  padding: 16px;
+}
+
+/* Perfil do cliente */
+.adbl-profile {
+  text-align: center;
+  padding: 22px 16px 18px;
+}
+.adbl-profile__name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--adbl-ink);
+  line-height: 1.25;
+}
+.adbl-profile__contacts {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.adbl-contact {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: var(--adbl-text);
+}
+.adbl-contact i {
+  color: var(--adbl-muted);
+  font-size: 14px;
+}
+.adbl-contact--muted {
+  color: var(--adbl-muted);
+  font-style: italic;
+}
+
+/* Ações (grade de botões) */
+.adbl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid var(--adbl-line);
+}
+
+/* Botões */
+.adbl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.2;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.05s;
+}
+.adbl-btn:active {
+  transform: translateY(1px);
+}
+.adbl-btn i {
+  font-size: 14px;
+}
+.adbl-btn--primary {
+  background: var(--ad-navy);
+  border-color: var(--ad-navy);
+  color: #fff;
+}
+.adbl-btn--primary:hover {
+  background: var(--ad-navy-700);
+  border-color: var(--ad-navy-700);
+  color: #fff;
+}
+.adbl-btn--outline {
+  background: #fff;
+  border-color: var(--adbl-line);
+  color: var(--adbl-text);
+}
+.adbl-btn--outline:hover {
+  border-color: var(--adbl-purple);
+  color: var(--adbl-purple);
+}
+.adbl-btn--success {
+  background: var(--adbl-success);
+  border-color: var(--adbl-success);
+  color: #fff;
+}
+.adbl-btn--success:hover {
+  filter: brightness(0.95);
+  color: #fff;
+}
+.adbl-btn--danger-soft {
+  background: #fff;
+  border-color: #f0c9cd;
+  color: var(--adbl-danger);
+}
+.adbl-btn--danger-soft:hover {
+  background: #fdeef0;
+  color: var(--adbl-danger);
+}
+.adbl-btn--block {
+  width: 100%;
+}
+.adbl-btn--grow {
+  flex: 1 1 auto;
+}
+.adbl-btn--sm {
+  padding: 6px 11px;
+  font-size: 12.5px;
+}
+.adbl-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Campos de formulário */
+.adbl-field {
+  margin-bottom: 14px;
+}
+.adbl-field:last-child {
+  margin-bottom: 0;
+}
+.adbl-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--adbl-muted);
+  margin-bottom: 6px;
+}
+.adbl-input,
+.adbl-select,
+.adbl-textarea {
+  width: 100%;
+  border: 1px solid var(--adbl-line);
+  border-radius: var(--adbl-radius-sm);
+  padding: 9px 12px;
+  font-size: 14px;
+  color: var(--adbl-ink);
+  background: #fff;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.adbl-input:focus,
+.adbl-select:focus,
+.adbl-textarea:focus {
+  border-color: var(--adbl-purple);
+  box-shadow: 0 0 0 3px rgba(22, 34, 63, 0.12);
+}
+.adbl-textarea {
+  resize: vertical;
+  min-height: 92px;
+  line-height: 1.5;
+}
+
+/* Accordion (details) refinado */
+.adbl-accordion {
+  border: 1px solid var(--adbl-line);
+  border-radius: var(--adbl-radius-sm);
+  margin-bottom: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.adbl-accordion > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 11px 14px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--adbl-ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  user-select: none;
+  background: transparent;
+}
+.adbl-accordion > summary:hover {
+  background: var(--adbl-surface);
+}
+.adbl-accordion > summary::-webkit-details-marker {
+  display: none;
+}
+.adbl-accordion > summary::after {
+  content: '';
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--adbl-muted);
+  transition: transform 0.2s ease;
+}
+.adbl-accordion[open] > summary::after {
+  transform: rotate(180deg);
+}
+.adbl-accordion[open] > summary {
+  border-bottom: 1px solid var(--adbl-line);
+}
+.adbl-accordion__body {
+  padding: 14px;
+}
+
+/* Negociação / deal */
+.adbl-deal {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--adbl-line);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.adbl-deal:last-child {
+  border-bottom: none;
+}
+.adbl-deal__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--adbl-ink);
+  margin-bottom: 7px;
+}
+.adbl-deal__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.adbl-stars {
+  color: #e8b800;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.adbl-price {
+  font-weight: 700;
+  color: var(--adbl-success);
+  font-size: 13.5px;
+}
+.adbl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--adbl-purple-soft);
+  color: var(--adbl-purple);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.adbl-chip--success {
+  background: #e7f4ee;
+  color: var(--adbl-success);
+}
+.adbl-chip--danger {
+  background: #fbe9eb;
+  color: var(--adbl-danger);
+}
+.adbl-chip--warning {
+  background: #fbf1dc;
+  color: var(--adbl-warning);
+}
+
+/* Estado vazio */
+.adbl-empty {
+  text-align: center;
+  color: var(--adbl-muted);
+  padding: 34px 16px;
+}
+.adbl-empty i {
+  font-size: 38px;
+  color: #cfcfe0;
+  display: block;
+  margin-bottom: 10px;
+}
+.adbl-empty p {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+}
+
+/* Rating editável */
+.adbl-rating {
+  display: inline-flex;
+  gap: 3px;
+}
+.adbl-rating i {
+  cursor: pointer;
+  color: #d9d9e6;
+  font-size: 18px;
+  transition: color 0.12s, transform 0.12s;
+}
+.adbl-rating i.is-on {
+  color: #f0b400;
+}
+.adbl-rating i:hover {
+  transform: scale(1.12);
+}
+
+/* Linha de rótulo + valor (status etc.) */
+.adbl-inline-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--adbl-text);
+}
+
+/* Lista de vínculo de clientes */
+.adbl-link-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+.adbl-link-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--adbl-line);
+  font-size: 13.5px;
+  color: var(--adbl-text);
+}
+.adbl-link-item small {
+  color: var(--adbl-muted);
+}
+.adbl-muted-note {
+  font-size: 12.5px;
+  color: var(--adbl-muted);
+  margin-top: 8px;
 }
