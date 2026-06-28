@@ -44,6 +44,10 @@
               <i class="bi bi-journal-text"></i>
               Anotações
             </router-link>
+            <router-link :to="financeRoute" class="adbl-btn adbl-btn--outline adbl-btn--grow">
+              <i class="bi bi-cash-coin"></i>
+              Finanças
+            </router-link>
             <a
               :href="`${peopleEditUrl}${person.id}`"
               target="_blank"
@@ -338,6 +342,16 @@ const peopleEditUrl = computed(() => `${import.meta.env.VITE_APP_BASE_URL}people
 // Rota da view de anotações deste mesmo chat, preservando os identificadores.
 const notesRoute = computed(() => ({
   name: 'PersonNote',
+  params: {
+    chatId: searchPhone.value || rawChatId.value || chatId.value,
+    chatName: chatName.value || 'Chat',
+  },
+  query: { raw: rawChatId.value, phone: searchPhone.value },
+}));
+
+// Rota das finanças deste mesmo cliente (mesma identidade de chat).
+const financeRoute = computed(() => ({
+  name: 'PersonFinance',
   params: {
     chatId: searchPhone.value || rawChatId.value || chatId.value,
     chatName: chatName.value || 'Chat',

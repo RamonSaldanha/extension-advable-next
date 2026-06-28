@@ -902,3 +902,211 @@ body {
   color: var(--adbl-muted);
   margin-top: 8px;
 }
+
+/* ---- Finanças: chip de situação (cores sólidas, sem gradiente) ---- */
+.fin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.fin-chip i {
+  font-size: 12px;
+}
+.fin-chip--paid {
+  background: #e4f3ea;
+  color: var(--ad-success);
+}
+.fin-chip--pending {
+  background: #fbf0d9;
+  color: #9a6a12;
+}
+.fin-chip--late {
+  background: #f8dfe1;
+  color: var(--ad-danger);
+}
+
+/* ---- Finanças: cabeçalho geral + navegação por mês ---- */
+.fin-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.fin-monthnav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fin-navbtn {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ad-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ad-ink);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.fin-navbtn:hover {
+  border-color: var(--ad-navy);
+  color: var(--ad-navy);
+}
+.fin-monthlabel {
+  min-width: 116px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ad-ink);
+}
+
+/* ---- Finanças: faixa de totais ---- */
+.fin-summary {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.fin-summary__item {
+  flex: 1 1 0;
+  background: #fff;
+  border: 1px solid var(--ad-line);
+  border-radius: var(--adbl-radius-sm, 10px);
+  padding: 9px 10px;
+  text-align: center;
+  min-width: 0;
+}
+.fin-summary__label {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ad-muted);
+}
+.fin-summary__value {
+  display: block;
+  margin-top: 3px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ad-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fin-summary__value--paid {
+  color: var(--ad-success);
+}
+.fin-summary__value--late {
+  color: var(--ad-danger);
+}
+
+/* ---- Finanças: formulário de novo pagamento ---- */
+.fin-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+/* ---- Finanças: cabeçalho da lista ---- */
+.fin-listhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.fin-listhead__total {
+  font-size: 12.5px;
+  color: var(--ad-text);
+}
+
+/* ---- Finanças: lista de pagamentos ---- */
+.fin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.fin-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--ad-line);
+}
+.fin-row:first-child {
+  border-top: none;
+}
+.fin-row__info {
+  min-width: 0;
+}
+.fin-row__desc {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ad-ink);
+  margin-bottom: 7px;
+  word-break: break-word;
+}
+.fin-row__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.fin-sub {
+  font-size: 12px;
+  color: var(--ad-muted);
+}
+.fin-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--ad-muted);
+  cursor: pointer;
+}
+.fin-due__input {
+  border: 1px solid var(--ad-line);
+  border-radius: 7px;
+  padding: 3px 6px;
+  font-size: 12px;
+  color: var(--ad-ink);
+  background: #fff;
+  font-family: inherit;
+}
+.fin-due__input:focus {
+  outline: none;
+  border-color: var(--ad-navy);
+  box-shadow: 0 0 0 3px rgba(22, 34, 63, 0.12);
+}
+.fin-row__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.fin-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ad-ink);
+  white-space: nowrap;
+}
+.fin-amount--expense {
+  color: var(--ad-danger);
+}
+.fin-row__actions {
+  display: flex;
+  gap: 6px;
+}
+.fin-row__actions .adbl-btn {
+  padding: 5px 9px;
+}

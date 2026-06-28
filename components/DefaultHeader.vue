@@ -27,6 +27,10 @@
       <i class="bi bi-people-fill nav-ico"></i>
       <span class="nav-label">Clientes</span>
     </button>
+    <button class="nav-item" :class="{ active: activeTab === 'finance' }" @click="setActiveTab('finance')">
+      <i class="bi bi-cash-coin nav-ico"></i>
+      <span class="nav-label">Finanças</span>
+    </button>
 
     <div class="dropdown nav-profile">
       <a
@@ -161,7 +165,11 @@ const updateActiveTabFromRoute = () => {
     case 'Person':
     case 'PersonGeneral':
     case 'EditPerson':
+    case 'PersonFinance':
       activeTab.value = 'person';
+      break;
+    case 'Finance':
+      activeTab.value = 'finance';
       break;
     case 'ProcessView':
     case 'EditCase':
@@ -238,6 +246,9 @@ const setActiveTab = (tab) => {
       break;
     case 'person':
       router.push({ name: 'PersonGeneral' });
+      break;
+    case 'finance':
+      router.push({ name: 'Finance' });
       break;
     case 'documentos':
       // router.push({ name: 'Documentos' });

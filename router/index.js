@@ -48,6 +48,18 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/person/finance/:chatId/:chatName',
+    name: 'PersonFinance',
+    component: () => import('@/pages/PersonFinance.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/finances',
+    name: 'Finance',
+    component: () => import('@/pages/Finance.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/processes',
     name: 'ProcessIndex',
     component: () => import('@/pages/ProcessIndex.vue'),
