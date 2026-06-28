@@ -15,6 +15,11 @@
         </button>
       </div>
 
+      <p class="people-hint">
+        <i class="bi bi-whatsapp"></i>
+        Dica: ao abrir uma conversa no WhatsApp Web, o cliente é aberto automaticamente.
+      </p>
+
       <div class="adbl-stack">
         <!-- Cadastro do zero (sem precisar de chat ativo) -->
         <div v-if="creating" class="adbl-card">
@@ -163,6 +168,22 @@ onMounted(() => load());
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.people-hint {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 0 14px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ad-muted, #8b93a3);
+}
+
+.people-hint i {
+  color: #25d366;
+  font-size: 14px;
+  flex: 0 0 auto;
 }
 
 .people-search {

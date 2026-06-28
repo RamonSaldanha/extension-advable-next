@@ -30,12 +30,6 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/whatsapp',
-    name: 'WhatsApp',
-    component: () => import('@/pages/WhatsApp.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
     path: '/person',
     name: 'PersonGeneral',
     component: () => import('@/pages/People.vue'),

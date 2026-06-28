@@ -23,10 +23,6 @@
       <i class="bi bi-lightning-charge nav-ico"></i>
       <span class="nav-label">Ações</span>
     </button>
-    <button class="nav-item" :class="{ active: activeTab === 'whatsapp' }" @click="setActiveTab('whatsapp')">
-      <i class="bi bi-whatsapp nav-ico"></i>
-      <span class="nav-label">WhatsApp</span>
-    </button>
     <button class="nav-item" :class="{ active: activeTab === 'person' }" @click="setActiveTab('person')">
       <i class="bi bi-people-fill nav-ico"></i>
       <span class="nav-label">Clientes</span>
@@ -43,6 +39,15 @@
         <i class="bi bi-person-circle user-avatar-icon"></i>
       </a>
       <ul class="dropdown-menu dropdown-menu-end">
+        <li>
+          <a class="dropdown-item dropdown-item--toggle" href="#" @click.prevent="toggleDocked">
+            <span class="dd-toggle-label">
+              <i class="bi bi-layout-sidebar-inset-reverse"></i> Encaixar na lateral
+            </span>
+            <i class="bi dd-toggle-state" :class="dockedMode ? 'bi-toggle-on' : 'bi-toggle-off'"></i>
+          </a>
+        </li>
+        <li><hr class="dropdown-divider" /></li>
         <li>
           <a class="dropdown-item" @click="openChangeTeamModal">Trocar de Time</a>
         </li>
@@ -90,7 +95,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import ChangeTeamModal from './ChangeTeamModal.vue';
@@ -108,6 +113,31 @@ const route = useRoute();
 const auth = useAuthStore();
 const user = computed(() => auth.user);
 const isChangeTeamModalVisible = ref(false);
+
+// Modo encaixado (painel lateral fixo). Persistido em browser.storage.local e
+// sincronizado com o content script, que faz a injeção e a reserva de espaço na
+// página. Aqui é só o liga/desliga e o reflexo do estado atual.
+const dockedMode = ref(false);
+let dockedChangeListener = null;
+
+function readDockedMode() {
+  if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+    browser.storage.local
+      .get('dockedMode')
+      .then((res) => {
+        dockedMode.value = !!(res && res.dockedMode);
+      })
+      .catch(() => {});
+  }
+}
+
+function toggleDocked() {
+  const next = !dockedMode.value;
+  dockedMode.value = next;
+  if (typeof browser !== 'undefined' && browser.storage && browser.storage.local) {
+    browser.storage.local.set({ dockedMode: next }).catch(() => {});
+  }
+}
 
 // Função para determinar qual aba deve estar ativa baseada na rota atual
 const updateActiveTabFromRoute = () => {
@@ -127,9 +157,6 @@ const updateActiveTabFromRoute = () => {
       break;
     case 'Actions':
       activeTab.value = 'actions';
-      break;
-    case 'WhatsApp':
-      activeTab.value = 'whatsapp';
       break;
     case 'Person':
     case 'PersonGeneral':
@@ -152,6 +179,27 @@ watch(() => route.name, () => {
 
 onMounted(() => {
   updateActiveTabFromRoute();
+  readDockedMode();
+  if (typeof browser !== 'undefined' && browser.storage && browser.storage.onChanged) {
+    dockedChangeListener = (changes, area) => {
+      if (area === 'local' && changes.dockedMode) {
+        dockedMode.value = !!changes.dockedMode.newValue;
+      }
+    };
+    browser.storage.onChanged.addListener(dockedChangeListener);
+  }
+});
+
+onUnmounted(() => {
+  if (
+    dockedChangeListener &&
+    typeof browser !== 'undefined' &&
+    browser.storage &&
+    browser.storage.onChanged
+  ) {
+    browser.storage.onChanged.removeListener(dockedChangeListener);
+    dockedChangeListener = null;
+  }
 });
 
 const openChangeTeamModal = () => {
@@ -187,9 +235,6 @@ const setActiveTab = (tab) => {
       break;
     case 'actions':
       router.push({ name: 'Actions' });
-      break;
-    case 'whatsapp':
-      router.push({ name: 'WhatsApp' });
       break;
     case 'person':
       router.push({ name: 'PersonGeneral' });
@@ -430,5 +475,34 @@ function onSelectProcess(process) {
 .dropdown-item:hover {
   background-color: #f3f4f6;
   color: var(--ad-ink, #1a2233);
+}
+
+/* Item de liga/desliga (Encaixar na lateral) */
+.dropdown-item--toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  text-decoration: none;
+}
+
+.dd-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dd-toggle-state {
+  font-size: 18px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.dd-toggle-state.bi-toggle-on {
+  color: var(--ad-navy, #16223f);
+}
+
+.dd-toggle-state.bi-toggle-off {
+  color: var(--ad-muted, #8b93a3);
 }
 </style>

@@ -24,6 +24,7 @@ export default defineContentScript({
     let currentChatInfo = null; // cache do último chat ativo conhecido
     let clusterState = { registered: false, hasNote: false, personId: null };
     let refreshClusterImpl = null; // atribuído ao criar o cluster (só no WhatsApp)
+    let dockedMode = false; // painel encaixado sempre visível (lido de storage.local; liga/desliga pelo menu)
 
     function notifyChatChange(chatInfo) {
       if (!chatInfo || !chatInfo.chatId) return;
@@ -110,7 +111,9 @@ export default defineContentScript({
     }
 
     // === Verificação de URL ===
-    const pattern = /(pje.*jus\.br|jus\.br.*pje|web\.whatsapp\.com)/;
+    // Atua em QUALQUER tribunal/site .jus.br (não só PJe) e no WhatsApp Web —
+    // o painel encaixado deve funcionar "em qualquer site jus".
+    const pattern = /(jus\.br|web\.whatsapp\.com)/;
     const currentUrl = window.location.href;
     const isAllowedDomain = pattern.test(currentUrl);
 
@@ -203,6 +206,11 @@ export default defineContentScript({
     // Abre o modal (iframe do popup) numa rota específica do hash. Se já estiver
     // aberto, fecha e reabre na rota desejada.
     function openModal(hashRoute) {
+      // Modo encaixado: garante o painel lateral (que reserva espaço, não sobrepõe).
+      if (dockedMode) {
+        if (!document.getElementById('advable-docked-panel')) enterDockedMode(hashRoute);
+        return;
+      }
       if (document.getElementById('advable-modal')) {
         closeModal();
         setTimeout(() => createModal(hashRoute), 220);
@@ -270,7 +278,8 @@ export default defineContentScript({
           cluster.style.display = 'none';
           return;
         }
-        cluster.style.display = 'flex';
+        // No modo encaixado o painel já está sempre na tela; o cluster fica oculto.
+        cluster.style.display = dockedMode ? 'none' : 'flex';
         applyClusterPlacement();
         clearTimeout(lookupTimer);
         lookupTimer = setTimeout(() => {
@@ -745,6 +754,411 @@ export default defineContentScript({
       setTimeout(() => {
         if (modal) modal.remove();
       }, 200);
+    }
+
+    // ===================================================================
+    // === Painel ENCAIXADO (docked): sempre visível, reserva espaço   ===
+    // ===================================================================
+    // Diferente do modal flutuante (que sobrepõe a página), o painel encaixado
+    // encolhe a própria página para a faixa à esquerda e ocupa a faixa à direita,
+    // lado a lado — sem cobrir o conteúdo. É reaplicado a cada carga de página
+    // enquanto `dockedMode` estiver ligado, então "aparece sempre".
+
+    let savedHtmlInline = null; // estilos inline originais do <html> (p/ restaurar)
+    let dockRemoveTimer = null; // timeout de remoção animada (cancelável)
+
+    function dockMaxWidth() {
+      return Math.min(900, Math.max(MODAL_MIN_WIDTH, Math.floor(window.innerWidth * 0.8)));
+    }
+
+    function getDockWidth() {
+      let w = parseInt(localStorage.getItem('advableModalWidth'), 10);
+      if (!w || Number.isNaN(w)) w = MODAL_DEFAULT_WIDTH;
+      return clampValue(w, MODAL_MIN_WIDTH, dockMaxWidth());
+    }
+
+    function defaultClusterDisplay() {
+      if (!cluster) return 'none';
+      if (isWhatsApp) return currentChatInfo ? 'flex' : 'none';
+      return 'flex';
+    }
+
+    function defaultRoute() {
+      if (isWhatsApp && currentChatInfo) return chatHashRoutes().person;
+      return '/dashboard';
+    }
+
+    // Reserva a faixa à direita encolhendo o <html>. Receita validada ao vivo no
+    // PJe e no WhatsApp:
+    //  • width: calc(100vw - W) → força a largura mesmo quando o site fixa
+    //    width:100% no html/body (caso do WhatsApp, onde margin-right sozinho é
+    //    ignorado);
+    //  • margin-right: W → ocupa a faixa e ainda reflui sites de fluxo normal
+    //    (a soma com a largura dá exatamente 100vw, sem scroll horizontal);
+    //  • transform: translateZ(0) → torna o <html> bloco contenedor dos
+    //    position:fixed/absolute da PRÓPRIA página, forçando barras fixas e o
+    //    visualizador do PJe a refluírem p/ a largura reduzida.
+    function applyDockReserve(width, animate) {
+      const el = document.documentElement;
+      if (savedHtmlInline === null) {
+        savedHtmlInline = {
+          width: el.style.width,
+          minWidth: el.style.minWidth,
+          maxWidth: el.style.maxWidth,
+          marginRight: el.style.marginRight,
+          transform: el.style.transform,
+          transition: el.style.transition,
+          boxSizing: el.style.boxSizing,
+        };
+      }
+      const calc = `calc(100vw - ${width}px)`;
+      el.style.setProperty('transition', animate ? 'width 0.18s ease, margin-right 0.18s ease' : 'none', 'important');
+      el.style.setProperty('box-sizing', 'border-box', 'important');
+      el.style.setProperty('min-width', '0', 'important');
+      el.style.setProperty('max-width', calc, 'important');
+      el.style.setProperty('width', calc, 'important');
+      el.style.setProperty('margin-right', width + 'px', 'important');
+      el.style.setProperty('transform', 'translateZ(0)', 'important');
+    }
+
+    function clearDockReserve() {
+      const el = document.documentElement;
+      ['width', 'min-width', 'max-width', 'margin-right', 'transform', 'box-sizing', 'transition'].forEach(
+        (p) => el.style.removeProperty(p)
+      );
+      if (savedHtmlInline) {
+        const s = savedHtmlInline;
+        if (s.width) el.style.width = s.width;
+        if (s.minWidth) el.style.minWidth = s.minWidth;
+        if (s.maxWidth) el.style.maxWidth = s.maxWidth;
+        if (s.marginRight) el.style.marginRight = s.marginRight;
+        if (s.transform) el.style.transform = s.transform;
+        if (s.boxSizing) el.style.boxSizing = s.boxSizing;
+        if (s.transition) el.style.transition = s.transition;
+        savedHtmlInline = null;
+      }
+    }
+
+    function enterDockedMode(hashRoute) {
+      closeModal(); // garante que o flutuante não conviva com o encaixado
+      if (cluster) cluster.style.display = 'none';
+      createDockedPanel(hashRoute || defaultRoute());
+    }
+
+    function exitDockedMode() {
+      removeDockedPanel();
+      if (cluster) cluster.style.display = defaultClusterDisplay();
+    }
+
+    function createDockedPanel(hashRoute = '/dashboard') {
+      // Cancela uma remoção animada pendente (toggle rápido) para não limpar a
+      // reserva logo após reaplicá-la.
+      if (dockRemoveTimer) {
+        clearTimeout(dockRemoveTimer);
+        dockRemoveTimer = null;
+        const stale = document.getElementById('advable-docked-panel');
+        if (stale) stale.remove();
+      }
+      if (document.getElementById('advable-docked-panel')) return;
+
+      const width = getDockWidth();
+      applyDockReserve(width, true);
+
+      const panel = document.createElement('div');
+      panel.id = 'advable-docked-panel';
+      Object.assign(panel.style, {
+        all: 'unset',
+        position: 'fixed',
+        top: '0',
+        left: `calc(100vw - ${width}px)`,
+        width: width + 'px',
+        height: '100vh',
+        backgroundColor: '#ffffff',
+        zIndex: '2147483647',
+        boxShadow: '-6px 0 24px rgba(0, 0, 0, 0.10)',
+        borderLeft: '1px solid #e6e8ee',
+        overflow: 'hidden',
+        opacity: '0',
+        transform: 'translateX(16px)',
+        transition: 'opacity 0.22s ease, transform 0.22s ease',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        fontSize: '14px',
+        lineHeight: '1.5',
+        color: '#212529',
+        boxSizing: 'border-box',
+      });
+
+      // === Cabeçalho ===
+      const header = document.createElement('div');
+      Object.assign(header.style, {
+        all: 'unset',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '12px 16px',
+        borderBottom: '1px solid #ececf3',
+        backgroundColor: '#ffffff',
+        flexShrink: '0',
+        boxSizing: 'border-box',
+        minHeight: '56px',
+        userSelect: 'none',
+      });
+
+      const headerLeft = document.createElement('div');
+      Object.assign(headerLeft.style, {
+        all: 'unset',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '10px',
+      });
+
+      const logoIcon = document.createElement('img');
+      logoIcon.src = browser.runtime.getURL('/icon48.png');
+      logoIcon.alt = 'Advable';
+      Object.assign(logoIcon.style, {
+        width: '22px',
+        height: '22px',
+        display: 'block',
+        pointerEvents: 'none',
+      });
+
+      const title = document.createElement('span');
+      title.textContent = 'Advable';
+      Object.assign(title.style, {
+        all: 'unset',
+        fontSize: '15px',
+        fontWeight: '600',
+        color: '#212529',
+        pointerEvents: 'none',
+      });
+
+      headerLeft.appendChild(logoIcon);
+      headerLeft.appendChild(title);
+
+      const headerControls = document.createElement('div');
+      Object.assign(headerControls.style, {
+        all: 'unset',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+      });
+
+      function headerIconButton(svg, label, danger) {
+        const b = document.createElement('button');
+        b.title = label;
+        b.innerHTML = svg;
+        Object.assign(b.style, {
+          all: 'unset',
+          width: '32px',
+          height: '32px',
+          background: 'transparent',
+          color: '#6c757d',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          transition: 'background-color 0.2s, color 0.2s',
+          boxSizing: 'border-box',
+        });
+        b.addEventListener('mouseenter', () => {
+          b.style.backgroundColor = danger ? 'rgba(220, 53, 69, 0.1)' : 'rgba(22, 34, 63, 0.08)';
+          b.style.color = danger ? '#dc3545' : '#16223f';
+        });
+        b.addEventListener('mouseleave', () => {
+          b.style.backgroundColor = 'transparent';
+          b.style.color = '#6c757d';
+        });
+        return b;
+      }
+
+      // Desencaixar: volta ao modo flutuante (desliga dockedMode e devolve a
+      // largura cheia à página). É o "não quero agora" — reabrir é pelo menu.
+      const unpinButton = headerIconButton(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16"><path d="M8.636 3.5a.5.5 0 0 0-.5-.5H1.5A1.5 1.5 0 0 0 0 4.5v10A1.5 1.5 0 0 0 1.5 16h10a1.5 1.5 0 0 0 1.5-1.5V7.864a.5.5 0 0 0-1 0V14.5a.5.5 0 0 1-.5.5h-10a.5.5 0 0 1-.5-.5v-10a.5.5 0 0 1 .5-.5h6.636a.5.5 0 0 0 .5-.5"/><path d="M16 .5a.5.5 0 0 0-.5-.5h-5a.5.5 0 0 0 0 1h3.793L6.146 9.146a.5.5 0 1 0 .708.708L15 1.707V5.5a.5.5 0 0 0 1 0z"/></svg>',
+        'Desencaixar (voltar ao modo flutuante)',
+        false
+      );
+
+      headerControls.appendChild(unpinButton);
+      header.appendChild(headerLeft);
+      header.appendChild(headerControls);
+
+      // === Conteúdo (iframe do popup) ===
+      const content = document.createElement('div');
+      Object.assign(content.style, {
+        all: 'unset',
+        flex: '1',
+        overflow: 'hidden',
+        display: 'block',
+        position: 'relative',
+      });
+
+      const iframe = document.createElement('iframe');
+      iframe.src = browser.runtime.getURL('/popup.html#' + (hashRoute || '/dashboard'));
+      Object.assign(iframe.style, {
+        all: 'unset',
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        display: 'block',
+        backgroundColor: 'white',
+      });
+      content.appendChild(iframe);
+
+      // === Alça de redimensionamento (apenas borda esquerda) ===
+      const leftHandle = document.createElement('div');
+      Object.assign(leftHandle.style, {
+        all: 'unset',
+        position: 'absolute',
+        top: '0',
+        bottom: '0',
+        left: '0',
+        width: '7px',
+        cursor: 'col-resize',
+        zIndex: '2',
+        backgroundColor: 'transparent',
+        transition: 'background-color 0.15s ease',
+      });
+      leftHandle.addEventListener('mouseenter', () => {
+        leftHandle.style.backgroundColor = 'rgba(50, 45, 120, 0.25)';
+      });
+      leftHandle.addEventListener('mouseleave', () => {
+        leftHandle.style.backgroundColor = 'transparent';
+      });
+
+      panel.appendChild(header);
+      panel.appendChild(content);
+      panel.appendChild(leftHandle);
+      document.body.appendChild(panel);
+
+      // Animação de entrada
+      requestAnimationFrame(() => {
+        panel.style.opacity = '1';
+        panel.style.transform = 'translateX(0)';
+      });
+
+      // Evita que o iframe "engula" o mousemove durante o resize.
+      let overlay = null;
+      function beginInteraction(cursor) {
+        iframe.style.pointerEvents = 'none';
+        panel.style.transition = 'none';
+        overlay = document.createElement('div');
+        Object.assign(overlay.style, {
+          position: 'fixed',
+          inset: '0',
+          zIndex: '2147483646',
+          cursor: cursor,
+          background: 'transparent',
+        });
+        document.body.appendChild(overlay);
+      }
+      function endInteraction() {
+        iframe.style.pointerEvents = 'auto';
+        panel.style.transition = 'opacity 0.22s ease, transform 0.22s ease';
+        if (overlay) {
+          overlay.remove();
+          overlay = null;
+        }
+      }
+
+      // Redimensiona ancorando a borda direita (colada na viewport); a largura
+      // aumenta arrastando a alça esquerda para a esquerda. A margem do <html>
+      // acompanha em tempo real para a página refluir junto.
+      leftHandle.addEventListener('mousedown', (event) => {
+        if (event.button !== 0) return;
+        event.preventDefault();
+        const startX = event.clientX;
+        const startWidth = panel.offsetWidth;
+        beginInteraction('col-resize');
+
+        function onMove(e) {
+          const dx = e.clientX - startX;
+          const newWidth = clampValue(startWidth - dx, MODAL_MIN_WIDTH, dockMaxWidth());
+          panel.style.width = newWidth + 'px';
+          panel.style.left = `calc(100vw - ${newWidth}px)`;
+          applyDockReserve(newWidth, false);
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          endInteraction();
+          localStorage.setItem('advableModalWidth', String(panel.offsetWidth));
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      // Mantém o painel/coluna dentro da viewport ao redimensionar a janela.
+      const onWindowResize = () => {
+        const w = clampValue(panel.offsetWidth, MODAL_MIN_WIDTH, dockMaxWidth());
+        panel.style.width = w + 'px';
+        panel.style.left = `calc(100vw - ${w}px)`;
+        applyDockReserve(w, false);
+      };
+      window.addEventListener('resize', onWindowResize);
+      panel._cleanup = () => window.removeEventListener('resize', onWindowResize);
+
+      unpinButton.addEventListener('click', () => {
+        // Desliga o modo encaixado (persiste); o onChanged faz a transição de
+        // volta ao flutuante e devolve a largura cheia à página.
+        try {
+          browser.storage.local.set({ dockedMode: false });
+        } catch (e) {
+          /* storage indisponível */
+        }
+      });
+    }
+
+    function removeDockedPanel() {
+      const el = document.documentElement;
+      const p = document.getElementById('advable-docked-panel');
+      if (p) {
+        if (typeof p._cleanup === 'function') p._cleanup();
+        p.id = ''; // libera o id para uma reabertura imediata, se houver
+        p.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
+        p.style.opacity = '0';
+        p.style.transform = 'translateX(16px)';
+      }
+      // Devolve a largura cheia com animação e restaura os estilos no fim.
+      el.style.setProperty('transition', 'width 0.18s ease, margin-right 0.18s ease', 'important');
+      el.style.setProperty('width', '100vw', 'important');
+      el.style.setProperty('max-width', '100vw', 'important');
+      el.style.setProperty('margin-right', '0px', 'important');
+      if (dockRemoveTimer) clearTimeout(dockRemoveTimer);
+      dockRemoveTimer = setTimeout(() => {
+        dockRemoveTimer = null;
+        if (p) p.remove();
+        clearDockReserve();
+      }, 200);
+    }
+
+    // === Inicialização do modo encaixado ===
+    if (browser && browser.storage && browser.storage.local) {
+      browser.storage.local
+        .get('dockedMode')
+        .then((res) => {
+          dockedMode = !!(res && res.dockedMode);
+          if (dockedMode) enterDockedMode(defaultRoute());
+        })
+        .catch(() => {
+          /* storage indisponível */
+        });
+    }
+
+    if (browser && browser.storage && browser.storage.onChanged) {
+      browser.storage.onChanged.addListener((changes, area) => {
+        if (area !== 'local' || !changes.dockedMode) return;
+        const nv = !!changes.dockedMode.newValue;
+        if (nv === dockedMode) return;
+        dockedMode = nv;
+        if (dockedMode) enterDockedMode(defaultRoute());
+        else exitDockedMode();
+      });
     }
   },
 });
