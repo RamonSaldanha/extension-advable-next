@@ -33,9 +33,7 @@
           :disabled="!day.dateKey"
           @click="selectDay(day)"
         >
-          <span v-if="day.dateKey" class="calendar-day__label">
-            {{ day.day }}<template v-if="day.tasks.length"> ({{ day.tasks.length }})</template>
-          </span>
+          <span v-if="day.dateKey" class="calendar-day__label">{{ day.day }}</span>
           <span v-if="day.tasks.length" class="calendar-day__dot"></span>
         </button>
       </div>
@@ -155,7 +153,7 @@ const selectedDateLabel = computed(() => {
     year: 'numeric',
   })
 
-  return `${label} (${selectedTasks.value.length})`
+  return label
 })
 
 async function fetchTasks() {
@@ -390,7 +388,7 @@ defineExpose({
   width: 5px;
   height: 5px;
   border-radius: 999px;
-  background: var(--ad-navy, #16223f);
+  background: #f5b82e;
 }
 
 .calendar-day.all-completed .calendar-day__dot {

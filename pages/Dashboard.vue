@@ -39,7 +39,7 @@
               >
                 <span class="column-chart__value">{{ bar.value }}</span>
                 <span class="column-chart__plot">
-                  <span class="column-chart__bar column-chart__bar--rose" :style="{ height: bar.height }"></span>
+                  <span class="column-chart__bar column-chart__bar--process" :style="{ height: bar.height }"></span>
                 </span>
                 <span class="column-chart__label">{{ bar.label }}</span>
               </div>
@@ -47,32 +47,29 @@
           </div>
         </div>
 
-        <!-- Ranking dos Sistemas -->
-        <h2 class="ad-section-title section-spaced">Ranking por Sistema</h2>
-        <div class="adbl-card chart-card">
-          <div class="adbl-card__body">
-            <p v-if="isLoading" class="loading-text">Carregando...</p>
-            <p v-else-if="courtBars.length === 0" class="loading-text">Nenhum sistema com processos.</p>
-            <div v-else class="column-chart column-chart--ranking" aria-label="Ranking por sistema">
-              <component
-                :is="bar.url ? 'a' : 'div'"
-                v-for="bar in courtBars"
-                :key="bar.key"
-                :href="bar.url"
-                :target="bar.url ? '_blank' : undefined"
-                :rel="bar.url ? 'noopener noreferrer' : undefined"
-                class="column-chart__item column-chart__item--link"
-                :title="`${bar.title}: ${bar.value}`"
-              >
-                <span class="column-chart__value">{{ bar.value }}</span>
-                <span class="column-chart__plot">
-                  <span class="column-chart__bar" :style="{ height: bar.height }"></span>
-                </span>
-                <span class="column-chart__label column-chart__label--system">{{ bar.label }}</span>
-              </component>
+        <!-- Valores recebidos por mês -->
+        <template v-if="canAccessFinances">
+          <h2 class="ad-section-title section-spaced">Valores Recebidos</h2>
+          <div class="adbl-card chart-card">
+            <div class="adbl-card__body">
+              <p v-if="isLoading" class="loading-text">Carregando...</p>
+              <div v-else class="column-chart" aria-label="Valores recebidos por mês">
+                <div
+                  v-for="bar in receivedMonthBars"
+                  :key="bar.key"
+                  class="column-chart__item"
+                  :title="`${bar.label}: ${formatBRL(bar.value)}`"
+                >
+                  <span class="column-chart__value column-chart__value--money">{{ formatCompactBRL(bar.value) }}</span>
+                  <span class="column-chart__plot">
+                    <span class="column-chart__bar column-chart__bar--money" :style="{ height: bar.height }"></span>
+                  </span>
+                  <span class="column-chart__label">{{ bar.label }}</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
       </div>
     </div>
   </Layout>
@@ -94,9 +91,10 @@ import TaskCalendar from '@/components/TaskCalendar.vue';
 const isLoading = ref(false);
 const auth = useAuthStore();
 const user = computed(() => auth.user);
-const topCourts = ref([]);
 const dashboardError = ref('');
 const processesPerMonth = ref({ labels: [], data: [] });
+const receivedPerMonth = ref({ labels: [], data: [] });
+const canAccessFinances = ref(false);
 
 import processPagePJESeabra from '@/components/tribunais/processPagePJESeabra.vue';
 import processPagePJETrabalho from '@/components/tribunais/processPagePJETrabalho.vue';
@@ -126,43 +124,35 @@ function makeBars(labels = [], data = []) {
   }));
 }
 
-function systemAbbreviation(court) {
-  const system = court?.court_system || {};
-  const slug = system.slug || system.system_name;
-
-  if (slug) {
-    return String(slug).replace(/\s+/g, '').toUpperCase() || 'N/A';
-  }
-
-  return String(system.title || 'N/A')
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) => word[0])
-    .join('')
-    .slice(0, 8)
-    .toUpperCase() || 'N/A';
-}
-
 const processMonthBars = computed(() => makeBars(
   processesPerMonth.value.labels || [],
   processesPerMonth.value.data || [],
 ));
 
-const courtBars = computed(() => {
-  const values = topCourts.value.map((court) => ({
-    key: court.court_systems_id,
-    label: systemAbbreviation(court),
-    title: court.court_system?.title || court.court_system?.slug || 'Sistema',
-    value: Number(court.process_count || 0),
-    url: court.court_system?.private_page || null,
-  }));
-  const max = Math.max(...values.map((bar) => bar.value), 1);
+const receivedMonthBars = computed(() => makeBars(
+  receivedPerMonth.value.labels || [],
+  receivedPerMonth.value.data || [],
+));
 
-  return values.map((bar) => ({
-    ...bar,
-    height: bar.value > 0 ? `${Math.max((bar.value / max) * 100, 10)}%` : '0%',
-  }));
-});
+function formatBRL(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number(value || 0));
+}
+
+function formatCompactBRL(value) {
+  const amount = Number(value || 0);
+  if (Math.abs(amount) >= 1000) {
+    return `R$ ${(amount / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil`;
+  }
+
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
 
 async function fetchDashboardData() {
   const teamId = user.value?.current_team_id;
@@ -175,13 +165,11 @@ async function fetchDashboardData() {
   dashboardError.value = '';
 
   try {
-    const [statsResponse, topCourtsResponse] = await Promise.all([
-      api.get('/dashboard/stats'),
-      api.get('/top-court-systems'),
-    ]);
+    const statsResponse = await api.get('/dashboard/stats');
 
     processesPerMonth.value = statsResponse.data?.processes_per_month || { labels: [], data: [] };
-    topCourts.value = Array.isArray(topCourtsResponse.data) ? topCourtsResponse.data : [];
+    receivedPerMonth.value = statsResponse.data?.received_per_month || { labels: [], data: [] };
+    canAccessFinances.value = !!statsResponse.data?.can_access_finances;
   } catch (error) {
     dashboardError.value = 'Não foi possível carregar os dados do dashboard.';
     console.error('Erro ao buscar os dados do dashboard:', error);
@@ -313,11 +301,6 @@ watch(() => user.value?.current_team_id, (teamId) => {
   padding-bottom: 2px;
 }
 
-.column-chart--ranking {
-  gap: 14px;
-  justify-content: space-around;
-}
-
 .column-chart__item {
   flex: 1 0 34px;
   min-width: 34px;
@@ -328,15 +311,6 @@ watch(() => user.value?.current_team_id, (teamId) => {
   gap: 6px;
   color: inherit;
   text-decoration: none;
-}
-
-.column-chart--ranking .column-chart__item {
-  flex-basis: 48px;
-  min-width: 48px;
-}
-
-.column-chart__item--link:hover .column-chart__bar {
-  background: #0f1a32;
 }
 
 .column-chart__value {
@@ -364,8 +338,12 @@ watch(() => user.value?.current_team_id, (teamId) => {
   transition: height 0.2s ease, background-color 0.15s ease;
 }
 
-.column-chart__bar--rose {
-  background: #9e2755;
+.column-chart__bar--process {
+  background: #2f6f9f;
+}
+
+.column-chart__bar--money {
+  background: #2f9f6f;
 }
 
 .column-chart__label {
@@ -377,9 +355,4 @@ watch(() => user.value?.current_team_id, (teamId) => {
   white-space: normal;
 }
 
-.column-chart__label--system {
-  max-width: 64px;
-  color: var(--ad-ink, #1a2233);
-  font-weight: 700;
-}
 </style>
