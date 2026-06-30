@@ -473,6 +473,23 @@ body {
   align-items: center;
   justify-content: center;
 }
+/* Cores sugestivas por situação (mesma paleta dos .fin-chip). Sólidas, sem gradiente. */
+.ad-tab__badge--all {
+  background: #e2e6f0;
+  color: var(--ad-navy);
+}
+.ad-tab__badge--pending {
+  background: #fbf0d9;
+  color: #9a6a12;
+}
+.ad-tab__badge--late {
+  background: #f8dfe1;
+  color: var(--ad-danger);
+}
+.ad-tab__badge--paid {
+  background: #e4f3ea;
+  color: var(--ad-success);
+}
 
 .adbl-page {
   padding: 16px;
@@ -1075,12 +1092,20 @@ body {
 }
 .fin-due__input {
   border: 1px solid var(--ad-line);
-  border-radius: 7px;
-  padding: 3px 6px;
-  font-size: 12px;
-  color: var(--ad-ink);
+  border-radius: 6px;
+  padding: 2px 5px;
+  width: 108px;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--ad-text);
   background: #fff;
   font-family: inherit;
+  box-sizing: border-box;
+}
+/* Vencimento em atraso: realça em vermelho (substitui o aviso do antigo badge). */
+.fin-due__input--late {
+  border-color: var(--ad-danger);
+  color: var(--ad-danger);
 }
 .fin-due__input:focus {
   outline: none;
@@ -1105,8 +1130,229 @@ body {
 }
 .fin-row__actions {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
 }
 .fin-row__actions .adbl-btn {
   padding: 5px 9px;
+}
+.fin-status-label {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+.fin-status-label--pago {
+  color: var(--ad-success);
+}
+.fin-status-label--pendente {
+  color: #9a6a12;
+}
+.fin-status-label--atrasado {
+  color: var(--ad-danger);
+}
+
+/* ---- Finanças: toggle "Pago" (switch + rótulo, cores sólidas) ---- */
+.fin-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  user-select: none;
+}
+.fin-switch__input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.fin-switch__track {
+  position: relative;
+  flex-shrink: 0;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: #cfd4de;
+  transition: background-color 0.16s ease;
+}
+.fin-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.16s ease;
+}
+.fin-switch__input:checked + .fin-switch__track {
+  background: var(--ad-success);
+}
+.fin-switch__input:checked + .fin-switch__track .fin-switch__thumb {
+  transform: translateX(14px);
+}
+.fin-switch__input:focus-visible + .fin-switch__track {
+  box-shadow: 0 0 0 3px rgba(22, 34, 63, 0.18);
+}
+.fin-switch__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ad-ink);
+}
+
+/* ---- Finanças: cliente selecionado no form geral ---- */
+.fin-client-picked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* ---- Finanças: ação flutuante de adicionar ---- */
+.fin-page {
+  padding-bottom: 84px;
+}
+.fin-page .fin-toolbar {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 1100;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0;
+  pointer-events: none;
+}
+.fin-page .fin-toolbar .fin-adder {
+  pointer-events: auto;
+}
+.fin-page .fin-toolbar .adbl-btn {
+  border-radius: 999px;
+  padding: 9px 13px;
+  box-shadow: 0 10px 24px rgba(22, 34, 63, 0.24);
+}
+.fin-page .fin-toolbar .fin-adder__menu {
+  top: auto;
+  right: 0;
+  bottom: calc(100% + 8px);
+}
+
+/* ---- Finanças: botão "Adicionar" (dropdown) ---- */
+.fin-adder {
+  position: relative;
+  display: inline-block;
+}
+.fin-adder__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 210px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--ad-line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 26, 50, 0.14);
+}
+.fin-adder__item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ad-ink);
+  font-family: var(--ad-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.14s ease;
+}
+.fin-adder__item:hover {
+  background: #f1f3f8;
+}
+.fin-adder__ico {
+  font-size: 15px;
+  color: var(--ad-navy);
+}
+.fin-adder__ico--in {
+  color: var(--ad-success);
+}
+.fin-adder__ico--out {
+  color: var(--ad-danger);
+}
+
+/* ---- Finanças: modal de novo lançamento ---- */
+.fin-modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 26, 50, 0.45);
+}
+.fin-modal {
+  width: 100%;
+  max-width: 380px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.28);
+}
+.fin-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--ad-line);
+}
+.fin-modal__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ad-ink);
+}
+.fin-modal__x {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ad-muted);
+  cursor: pointer;
+}
+.fin-modal__x:hover {
+  background: #f1f3f8;
+  color: var(--ad-ink);
+}
+.fin-modal__body {
+  padding: 16px;
+  overflow-y: auto;
+}
+.fin-modal__paid {
+  padding-top: 6px;
+}
+.fin-modal__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ad-line);
 }

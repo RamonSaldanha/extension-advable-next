@@ -1,115 +1,169 @@
 <template>
   <div class="task-calendar">
-    <FullCalendar
-      ref="calendar"
-      :options="calendarOptions"
-    />
-    
-    <!-- Dropdown Modal para detalhes da tarefa -->
-    <div 
-      v-if="selectedTask" 
-      class="task-dropdown dropdown-menu show position-absolute"
-      :style="dropdownStyle"
-    >
-      <div class="dropdown-header">
-        <strong>{{ selectedTask.title }}</strong>
-        <button 
-          type="button" 
-          class="btn-close btn-close-sm ms-auto" 
-          @click="closeDropdown"
-        ></button>
+    <div class="calendar-head">
+      <button type="button" class="calendar-nav" aria-label="Mês anterior" @click="goToPreviousMonth">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      <strong class="calendar-title">{{ monthTitle }}</strong>
+      <button type="button" class="calendar-nav" aria-label="Próximo mês" @click="goToNextMonth">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+
+    <p v-if="isLoading" class="calendar-loading">Carregando tarefas...</p>
+
+    <template v-else>
+      <div class="calendar-weekdays">
+        <span v-for="weekday in weekdays" :key="weekday">{{ weekday }}</span>
       </div>
-      <div class="dropdown-body p-2">
-        <div class="mb-2">
-          <small class="text-muted">Estado:</small>
-          <span class="badge bg-secondary ms-1 small">{{ selectedTask.extendedProps.taskState }}</span>
-        </div>
-        <div class="mb-2">
-          <small class="text-muted">Status:</small>
-          <span :class="selectedTask.extendedProps.completed ? 'badge bg-success ms-1 small' : 'badge bg-warning ms-1 small'">
-            {{ selectedTask.extendedProps.completed ? 'Concluída' : 'Pendente' }}
+
+      <div class="calendar-grid">
+        <button
+          v-for="day in calendarDays"
+          :key="day.key"
+          type="button"
+          class="calendar-day"
+          :class="{
+            'is-empty': !day.dateKey,
+            'is-today': day.isToday,
+            'is-selected': day.dateKey === selectedDateKey,
+            'has-tasks': day.tasks.length > 0,
+            'all-completed': day.tasks.length > 0 && day.allCompleted,
+          }"
+          :disabled="!day.dateKey"
+          @click="selectDay(day)"
+        >
+          <span v-if="day.dateKey" class="calendar-day__label">
+            {{ day.day }}<template v-if="day.tasks.length"> ({{ day.tasks.length }})</template>
           </span>
-        </div>
-        <div v-if="selectedTask.extendedProps.collaborators.length > 0" class="mb-2">
-          <small class="text-muted">Colaboradores:</small>
-          <p class="mb-0 small">{{ selectedTask.extendedProps.collaborators.join(', ') }}</p>
-        </div>
-        <div class="mb-2">
-          <small class="text-muted">
-            {{ hasTime(selectedTask.start) ? 'Data e Horário:' : 'Data:' }}
-          </small>
-          <p class="mb-0 small">
-            <i v-if="hasTime(selectedTask.start)" class="bi bi-clock me-1"></i>
-            {{ formatDate(selectedTask.start) }}
-          </p>
-        </div>
-      </div>
-      <div class="dropdown-footer">
-        <button class="btn btn-primary btn-sm" @click="openTaskDetail">
-          <i class="bi bi-arrow-up-right-square"></i> Abrir Tarefa
+          <span v-if="day.tasks.length" class="calendar-day__dot"></span>
         </button>
       </div>
-    </div>
+
+      <div class="selected-tasks">
+        <div class="selected-tasks__head">
+          <strong>{{ selectedDateLabel }}</strong>
+          <span>{{ selectedTasks.length ? 'Clique para abrir' : 'Sem tarefas' }}</span>
+        </div>
+
+        <div v-if="selectedTasks.length" class="task-day-list">
+          <button
+            v-for="task in selectedTasks"
+            :key="task.id"
+            type="button"
+            class="task-row"
+            :class="{ 'is-completed': isCompleted(task) }"
+            @click="openTask(task)"
+          >
+            <span class="task-row__mark">
+              <i :class="isCompleted(task) ? 'bi bi-check2' : 'bi bi-circle'"></i>
+            </span>
+            <span class="task-row__content">
+              <span class="task-row__title">{{ task.title }}</span>
+              <span class="task-row__meta">
+                <span v-if="taskTimeLabel(task)"><i class="bi bi-clock"></i>{{ taskTimeLabel(task) }}</span>
+                <span>{{ task.extendedProps?.taskState || 'Sem estado' }}</span>
+              </span>
+            </span>
+            <i class="bi bi-chevron-right task-row__chev"></i>
+          </button>
+        </div>
+
+        <p v-else class="calendar-empty">Nenhuma tarefa nesta data.</p>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
-import FullCalendar from '@fullcalendar/vue3'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import bootstrap5Plugin from '@fullcalendar/bootstrap5'
-import interactionPlugin from '@fullcalendar/interaction'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/api/axios'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
-const calendar = ref(null)
+const today = new Date()
 const events = ref([])
 const isLoading = ref(false)
-const selectedTask = ref(null)
-const dropdownPosition = ref({ x: 0, y: 0 })
+const visibleYear = ref(today.getFullYear())
+const visibleMonth = ref(today.getMonth())
+const selectedDateKey = ref(formatDateKey(today))
+const weekdays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-const calendarOptions = computed(() => ({
-  plugins: [dayGridPlugin, bootstrap5Plugin, interactionPlugin],
-  initialView: 'dayGridMonth',
-  themeSystem: 'bootstrap5',
-  height: 'auto',
-  locale: 'pt-br',
-  headerToolbar: {
-    left: 'prev,next',
-    center: 'title',
-    right: 'today'
-  },
-  titleFormat: { 
-    month: 'long', 
-    year: 'numeric' 
-  },
-  buttonText: {
-    today: 'Hoje'
-  },
-  events: events.value,
-  eventClick: handleEventClick,
-  eventDidMount: handleEventDidMount,
-  dateClick: handleDateClick,
-  dayMaxEvents: 2,
-  moreLinkClick: 'popover',
-  eventDisplay: 'block',
-  displayEventTime: true,
-  dayHeaderFormat: { weekday: 'short' },
-  aspectRatio: 1.2
-}))
+const monthTitle = computed(() => {
+  const label = new Date(visibleYear.value, visibleMonth.value, 1).toLocaleDateString('pt-BR', {
+    month: 'long',
+    year: 'numeric',
+  })
 
-const fetchTasks = async () => {
+  return label.charAt(0).toUpperCase() + label.slice(1)
+})
+
+const eventsByDate = computed(() => {
+  const groups = {}
+
+  events.value.forEach((task) => {
+    const dateKey = taskDateKey(task)
+    if (!dateKey) return
+    if (!groups[dateKey]) groups[dateKey] = []
+    groups[dateKey].push(task)
+  })
+
+  Object.values(groups).forEach((tasks) => {
+    tasks.sort((a, b) => String(a.start || '').localeCompare(String(b.start || '')))
+  })
+
+  return groups
+})
+
+const calendarDays = computed(() => {
+  const firstDay = new Date(visibleYear.value, visibleMonth.value, 1)
+  const daysInMonth = new Date(visibleYear.value, visibleMonth.value + 1, 0).getDate()
+  const cells = []
+
+  for (let index = 0; index < firstDay.getDay(); index += 1) {
+    cells.push({ key: `blank-start-${index}`, dateKey: null, tasks: [] })
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dateKey = formatDateKey(new Date(visibleYear.value, visibleMonth.value, day))
+    const tasks = eventsByDate.value[dateKey] || []
+
+    cells.push({
+      key: dateKey,
+      dateKey,
+      day,
+      tasks,
+      isToday: dateKey === formatDateKey(today),
+      allCompleted: tasks.every((task) => isCompleted(task)),
+    })
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push({ key: `blank-end-${cells.length}`, dateKey: null, tasks: [] })
+  }
+
+  return cells
+})
+
+const selectedTasks = computed(() => eventsByDate.value[selectedDateKey.value] || [])
+
+const selectedDateLabel = computed(() => {
+  const date = parseDateKey(selectedDateKey.value)
+  const label = date.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  })
+
+  return `${label} (${selectedTasks.value.length})`
+})
+
+async function fetchTasks() {
   try {
     isLoading.value = true
     const response = await api.get('/tasks/calendar')
-    events.value = response.data
-    
-    // Força a atualização do calendário
-    if (calendar.value) {
-      calendar.value.getApi().removeAllEvents()
-      calendar.value.getApi().addEventSource(events.value)
-    }
+    events.value = Array.isArray(response.data) ? response.data : []
+    ensureSelectedDate()
   } catch (error) {
     console.error('Erro ao buscar tarefas para o calendário:', error)
     if (error.response?.status === 401) {
@@ -120,409 +174,335 @@ const fetchTasks = async () => {
   }
 }
 
-const dropdownStyle = computed(() => ({
-  left: `${dropdownPosition.value.x}px`,
-  top: `${dropdownPosition.value.y}px`,
-  zIndex: 1050,
-  minWidth: '280px',
-  maxWidth: '320px'
-}))
-
-const handleEventClick = (clickInfo) => {
-  const event = clickInfo.event
-  const jsEvent = clickInfo.jsEvent
-  
-  // Calcular posição do dropdown
-  const rect = clickInfo.el.getBoundingClientRect()
-  const containerRect = calendar.value.$el.getBoundingClientRect()
-  
-  dropdownPosition.value = {
-    x: rect.left - containerRect.left + rect.width / 2 - 140,
-    y: rect.bottom - containerRect.top + 5
-  }
-  
-  selectedTask.value = event
-  
-  // Prevenir o comportamento padrão
-  jsEvent.preventDefault()
-  jsEvent.stopPropagation()
+function goToPreviousMonth() {
+  setVisibleMonth(-1)
 }
 
-const handleEventDidMount = (info) => {
-  // Adiciona tooltip simples
-  const event = info.event
-  const extendedProps = event.extendedProps
-  
-  info.el.setAttribute('title', 
-    `${event.title} - ${extendedProps.taskState}`
-  )
-  
-  // Adiciona cursor pointer
-  info.el.style.cursor = 'pointer'
+function goToNextMonth() {
+  setVisibleMonth(1)
 }
 
-const closeDropdown = () => {
-  selectedTask.value = null
+function setVisibleMonth(offset) {
+  const nextMonth = new Date(visibleYear.value, visibleMonth.value + offset, 1)
+  visibleYear.value = nextMonth.getFullYear()
+  visibleMonth.value = nextMonth.getMonth()
+  selectedDateKey.value = defaultDateForVisibleMonth()
 }
 
-const hasTime = (date) => {
-  const dateObj = new Date(date)
-  return dateObj.getHours() !== 0 || dateObj.getMinutes() !== 0
+function selectDay(day) {
+  if (!day.dateKey) return
+  selectedDateKey.value = day.dateKey
 }
 
-const formatDate = (date) => {
-  const dateObj = new Date(date)
-  
-  // Verificar se a data tem horário específico (não é meia-noite)
-  const hasTimeValue = hasTime(date)
-  
-  const options = {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  }
-  
-  let formatted = dateObj.toLocaleDateString('pt-BR', options)
-  
-  // Adicionar horário se não for meia-noite
-  if (hasTimeValue) {
-    const timeFormatted = dateObj.toLocaleTimeString('pt-BR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-    formatted += ` às ${timeFormatted}`
-  }
-  
-  return formatted
+function openTask(task) {
+  router.push(`/tasks/${task.id}`)
 }
 
-const openTaskDetail = () => {
-  if (selectedTask.value) {
-    // Navegar para a página de detalhes da tarefa
-    router.push(`/tasks/${selectedTask.value.id}`)
-    closeDropdown()
-  }
+function ensureSelectedDate() {
+  if (isDateInVisibleMonth(selectedDateKey.value)) return
+  selectedDateKey.value = defaultDateForVisibleMonth()
 }
 
-const handleDateClick = (dateClickInfo) => {
-  // Fechar dropdown se estiver aberto
-  if (selectedTask.value) {
-    closeDropdown()
+function defaultDateForVisibleMonth() {
+  const currentMonthKey = formatMonthKey(new Date(visibleYear.value, visibleMonth.value, 1))
+  const firstTask = events.value
+    .map((task) => taskDateKey(task))
+    .filter((dateKey) => dateKey && dateKey.startsWith(currentMonthKey))
+    .sort()[0]
+
+  return firstTask || formatDateKey(new Date(visibleYear.value, visibleMonth.value, 1))
+}
+
+function isDateInVisibleMonth(dateKey) {
+  return dateKey?.startsWith(formatMonthKey(new Date(visibleYear.value, visibleMonth.value, 1)))
+}
+
+function taskDateKey(task) {
+  return normalizeDateKey(task?.start || task?.deadline)
+}
+
+function normalizeDateKey(value) {
+  if (!value) return ''
+
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (match) return `${match[1]}-${match[2]}-${match[3]}`
   }
-  
-  // Obter a data clicada
-  const selectedDate = dateClickInfo.date
-  console.log('Data clicada no calendário:', selectedDate)
-  
-  // Criar data de hoje apenas com ano, mês e dia (ignorar horário completamente)
-  const today = new Date()
-  const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const selectedDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate())
-  
-  console.log('Comparação de datas:', {
-    today: todayDateOnly,
-    selected: selectedDateOnly,
-    isValidDate: selectedDateOnly >= todayDateOnly
-  })
-  
-  // Verificar se não é uma data passada (permitir hoje e futuro)
-  if (selectedDateOnly < todayDateOnly) {
-    console.warn('Data no passado clicada, ignorando:', selectedDate)
-    return
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  return formatDateKey(date)
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function formatMonthKey(date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+
+  return `${year}-${month}`
+}
+
+function parseDateKey(dateKey) {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return new Date(year, month - 1, day)
+}
+
+function isCompleted(task) {
+  return !!task?.extendedProps?.completed
+}
+
+function taskTimeLabel(task) {
+  const value = task?.start || task?.deadline
+  if (!value) return ''
+
+  if (typeof value === 'string') {
+    const match = value.match(/[T\s](\d{2}):(\d{2})/)
+    if (match && `${match[1]}:${match[2]}` !== '00:00') return `${match[1]}:${match[2]}`
   }
-  
-  // Formatar a data para ISO string (YYYY-MM-DD) 
-  const dateString = selectedDate.toISOString().split('T')[0]
-  console.log('Data formatada para navegação:', dateString)
-  
-  // Navegar para AddTask com a data pré-selecionada como query parameter
-  router.push({
-    path: '/tasks/add',
-    query: { date: dateString }
-  })
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime()) || (date.getHours() === 0 && date.getMinutes() === 0)) return ''
+
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
 onMounted(() => {
   fetchTasks()
-  
-  // Adicionar listener para fechar dropdown ao clicar fora
-  document.addEventListener('click', (event) => {
-    if (selectedTask.value && !event.target.closest('.task-dropdown')) {
-      closeDropdown()
-    }
-  })
 })
 
 defineExpose({
   fetchTasks,
-  closeDropdown
 })
 </script>
 
 <style scoped>
 .task-calendar {
-  position: relative;
   width: 100%;
 }
 
-/* Estilos do Calendário */
-:deep(.fc-theme-bootstrap5) {
-  --fc-border-color: #e6e8ee;
-  --fc-button-bg-color: #16223f;
-  --fc-button-border-color: #16223f;
-  --fc-button-hover-bg-color: #0f1a32;
-  --fc-button-hover-border-color: #0f1a32;
-  --fc-button-active-bg-color: #0f1a32;
-  --fc-button-active-border-color: #0f1a32;
-  --fc-today-bg-color: transparent;
+.calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
-/* "Hoje" em círculo navy, como no mockup */
-:deep(.fc-day-today .fc-daygrid-day-number) {
-  background: #16223f;
-  color: #fff;
+.calendar-title {
+  color: var(--ad-ink, #1a2233);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.calendar-nav {
+  width: 28px;
+  height: 28px;
+  border: 0;
   border-radius: 999px;
-  min-width: 22px;
-  height: 22px;
+  background: transparent;
+  color: var(--ad-muted, #8b93a3);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
-  font-weight: 600;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-/* Header do calendário mais compacto */
-:deep(.fc-header-toolbar) {
-  margin-bottom: 0.5rem !important;
+.calendar-nav:hover {
+  background: #eef1f7;
+  color: var(--ad-navy, #16223f);
 }
 
-:deep(.fc-toolbar-title) {
-  font-size: 1rem !important;
-  font-weight: 600 !important;
-  color: #495057;
-  text-transform: capitalize;
+.calendar-loading,
+.calendar-empty {
+  margin: 10px 0 0;
+  color: var(--ad-muted, #8b93a3);
+  font-size: 13px;
 }
 
-:deep(.fc-button) {
-  padding: 0.25rem 0.5rem !important;
-  font-size: 0.75rem !important;
-  line-height: 1.2 !important;
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
 }
 
-/* Cabeçalhos dos dias da semana */
-:deep(.fc-col-header-cell) {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  font-size: 0.7rem;
-  padding: 0.25rem !important;
-  text-transform: uppercase;
-}
-
-/* Células dos dias */
-:deep(.fc-daygrid-day) {
-  min-height: 32px !important;
-}
-
-:deep(.fc-daygrid-day-number) {
-  font-size: 0.8rem;
-  padding: 2px 4px;
-}
-
-/* Eventos do calendário */
-:deep(.fc-event-completed) {
-  background-color: #198754 !important;
-  border-color: #157347 !important;
-  color: white !important;
-}
-
-:deep(.fc-event-overdue) {
-  background-color: #dc3545 !important;
-  border-color: #b02a37 !important;
-  color: white !important;
-}
-
-:deep(.fc-event-warning) {
-  background-color: #fd7e14 !important;
-  border-color: #e67d22 !important;
-  color: white !important;
-}
-
-:deep(.fc-event-success) {
-  background-color: #16223f !important;
-  border-color: #0f1a32 !important;
-  color: white !important;
-}
-
-:deep(.fc-daygrid-event) {
-  cursor: pointer !important;
-  font-size: 0.65rem !important;
-  border-radius: 3px !important;
-  margin: 1px 2px !important;
-  padding: 1px 4px !important;
-  font-weight: 500 !important;
-}
-
-:deep(.fc-daygrid-event-harness) {
-  margin-top: 1px !important;
-  margin-bottom: 1px !important;
-}
-
-:deep(.fc-event-title) {
-  font-weight: 500 !important;
-}
-
-/* Remove margin-bottom indesejado */
-:deep(.fc .fc-daygrid-body-natural .fc-daygrid-day-events) {
-  margin-bottom: 0 !important;
-}
-
-/* Cursor pointer e hover nos dias do calendário */
-:deep(.fc-daygrid-day-frame) {
-  cursor: pointer !important;
-  transition: background-color 0.2s ease !important;
-}
-
-:deep(.fc-daygrid-day-frame:hover) {
-  background-color: rgba(22, 34, 63, 0.1) !important;
-}
-
-:deep(.fc-daygrid-day-top) {
-  cursor: pointer !important;
-}
-
-:deep(.fc-daygrid-day) {
-  position: relative;
-}
-
-:deep(.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled)) {
-  cursor: pointer !important;
-}
-
-/* Aparência diferenciada para datas passadas */
-:deep(.fc-daygrid-day.fc-day-past) {
-  opacity: 0.5;
-  background-color: rgba(108, 117, 125, 0.05);
-}
-
-:deep(.fc-daygrid-day.fc-day-past .fc-daygrid-day-number) {
-  color: #6c757d !important;
-}
-
-/* Datas passadas não têm cursor pointer */
-:deep(.fc-daygrid-day.fc-day-past) {
-  cursor: default !important;
-}
-
-/* Adicionar ícone de "+" apenas em datas válidas (hoje + futuro) */
-:deep(.fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):hover .fc-daygrid-day-top::after) {
-  content: '+ Nova';
-  position: absolute;
-  bottom: 2px;
-  right: 2px;
-  color: rgba(22, 34, 63, 0.8);
-  font-size: 0.6rem;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 2px 4px;
-  border-radius: 3px;
-  pointer-events: none;
-  white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  z-index: 10;
-}
-
-/* Hover só em datas válidas (hoje + futuro) */
-:deep(.fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):hover) {
-  background-color: rgba(22, 34, 63, 0.05) !important;
-}
-
-/* Ocultar hover em dias desabilitados e passados */
-:deep(.fc-daygrid-day.fc-day-disabled:hover .fc-daygrid-day-top::after),
-:deep(.fc-daygrid-day.fc-day-past:hover .fc-daygrid-day-top::after) {
-  display: none !important;
-}
-
-/* Dropdown da tarefa */
-.task-dropdown {
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  background: white;
-  padding: 0;
-  margin: 0;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.dropdown-header {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
-  border-radius: 8px 8px 0 0;
-}
-
-.dropdown-header strong {
-  font-size: 0.9rem;
-  color: #495057;
-  flex: 1;
-}
-
-.btn-close-sm {
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
-.dropdown-body {
-  font-size: 0.8rem;
-}
-
-.dropdown-body .text-muted {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.dropdown-body p {
-  font-size: 0.8rem;
-  line-height: 1.3;
-}
-
-.dropdown-body .badge {
-  font-size: 0.65rem;
-}
-
-.dropdown-footer {
-  padding: 0.75rem;
-  background-color: #f8f9fa;
-  border-top: 1px solid #dee2e6;
-  border-radius: 0 0 8px 8px;
+.calendar-weekdays {
+  margin-bottom: 4px;
+  color: var(--ad-muted, #8b93a3);
+  font-size: 10.5px;
+  font-weight: 700;
   text-align: center;
 }
 
-.dropdown-footer .btn {
-  font-size: 0.75rem;
-  padding: 0.375rem 0.75rem;
-  font-weight: 600;
+.calendar-grid {
+  gap: 4px;
 }
 
-/* Responsividade */
-@media (max-width: 576px) {
-  .task-dropdown {
-    min-width: 250px !important;
-    max-width: 280px !important;
-  }
-  
-  :deep(.fc-toolbar-title) {
-    font-size: 0.9rem !important;
-  }
-  
-  :deep(.fc-button) {
-    padding: 0.2rem 0.4rem !important;
-    font-size: 0.7rem !important;
-  }
+.calendar-day {
+  min-height: 42px;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ad-ink, #1a2233);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11.5px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.calendar-day:not(.is-empty):hover {
+  background: #f7f8fa;
+}
+
+.calendar-day.is-empty {
+  cursor: default;
+}
+
+.calendar-day.is-selected {
+  background: #eef1f7;
+  box-shadow: inset 0 0 0 1px var(--ad-navy, #16223f);
+}
+
+.calendar-day.is-today .calendar-day__label {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--ad-navy, #16223f);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-day__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--ad-navy, #16223f);
+}
+
+.calendar-day.all-completed .calendar-day__dot {
+  background: #198754;
+}
+
+.selected-tasks {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ad-line, #e6e8ee);
+}
+
+.selected-tasks__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.selected-tasks__head strong {
+  color: var(--ad-ink, #1a2233);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.selected-tasks__head span {
+  color: var(--ad-muted, #8b93a3);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.task-day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-row {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--ad-line, #e6e8ee);
+  border-radius: 12px;
+  background: #fff;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.task-row:hover {
+  border-color: #cfd5e2;
+  background: #f9fafc;
+}
+
+.task-row__mark {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #eef1f7;
+  color: var(--ad-navy, #16223f);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+
+.task-row.is-completed .task-row__mark {
+  background: #e8f5ee;
+  color: #198754;
+}
+
+.task-row__content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-row__title {
+  color: var(--ad-ink, #1a2233);
+  font-size: 12.5px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-row.is-completed .task-row__title {
+  color: #587064;
+}
+
+.task-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ad-muted, #8b93a3);
+  font-size: 11px;
+}
+
+.task-row__meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.task-row__chev {
+  color: var(--ad-muted, #8b93a3);
+  font-size: 12px;
 }
 </style>

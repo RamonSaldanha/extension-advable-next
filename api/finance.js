@@ -34,3 +34,9 @@ export function getWallets() {
 export function getFinances({ month, year } = {}) {
   return api.get('/finances', { params: { month, year } }).then((response) => response.data);
 }
+
+// Cria um pagamento avulso na visão geral. `data` = { description, amount, date,
+// type, wallet_id, installments, pessoa_id? } — pessoa_id é opcional ("sem cliente").
+export function addFinance(data) {
+  return api.post('/finances', data).then((response) => response.data);
+}

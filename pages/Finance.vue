@@ -4,7 +4,7 @@
       <DefaultHeader />
     </template>
 
-    <div class="adbl-page">
+    <div class="adbl-page fin-page">
       <Loader v-if="loading" />
 
       <div class="fin-head">
@@ -35,18 +35,22 @@
         </div>
       </div>
 
+      <div class="fin-toolbar">
+        <FinanceAdder @saved="load" />
+      </div>
+
       <div class="ad-tabs">
         <button class="ad-tab" :class="{ active: activeTab === 'todos' }" @click="activeTab = 'todos'">
-          Todos <span v-if="finances.length" class="ad-tab__badge">{{ finances.length }}</span>
+          Todos <span v-if="finances.length" class="ad-tab__badge ad-tab__badge--all">{{ finances.length }}</span>
         </button>
         <button class="ad-tab" :class="{ active: activeTab === 'pendente' }" @click="activeTab = 'pendente'">
-          Pendentes <span v-if="counts.pendente" class="ad-tab__badge">{{ counts.pendente }}</span>
+          Pendentes <span v-if="counts.pendente" class="ad-tab__badge ad-tab__badge--pending">{{ counts.pendente }}</span>
         </button>
         <button class="ad-tab" :class="{ active: activeTab === 'atrasado' }" @click="activeTab = 'atrasado'">
-          Atrasados <span v-if="counts.atrasado" class="ad-tab__badge">{{ counts.atrasado }}</span>
+          Atrasados <span v-if="counts.atrasado" class="ad-tab__badge ad-tab__badge--late">{{ counts.atrasado }}</span>
         </button>
         <button class="ad-tab" :class="{ active: activeTab === 'pago' }" @click="activeTab = 'pago'">
-          Pagos <span v-if="counts.pago" class="ad-tab__badge">{{ counts.pago }}</span>
+          Pagos <span v-if="counts.pago" class="ad-tab__badge ad-tab__badge--paid">{{ counts.pago }}</span>
         </button>
       </div>
 
@@ -57,10 +61,15 @@
               <div class="fin-row__info">
                 <div class="fin-row__desc">{{ f.person ? f.person.name : 'Sem cliente' }}</div>
                 <div class="fin-row__meta">
-                  <span class="fin-chip" :class="statusMeta(f.status).cls">
-                    <i class="bi" :class="statusMeta(f.status).icon"></i>{{ statusMeta(f.status).label }}
-                  </span>
-                  <span class="fin-sub">{{ f.description || 'Pagamento' }} · venc. {{ formatDateBR(f.date) }}</span>
+                  <span class="fin-sub">{{ f.description || 'Pagamento' }}</span>
+                  <input
+                    type="date"
+                    class="fin-due__input"
+                    :class="{ 'fin-due__input--late': financeStatus(f) === 'atrasado' }"
+                    :value="f.date"
+                    title="Mudar vencimento"
+                    @change="onChangeDate(f, $event)"
+                  />
                 </div>
               </div>
               <div class="fin-row__side">
@@ -68,22 +77,10 @@
                   {{ formatBRL(f.amount) }}
                 </div>
                 <div class="fin-row__actions">
-                  <button
-                    v-if="!f.paid"
-                    class="adbl-btn adbl-btn--success adbl-btn--sm"
-                    title="Marcar como pago"
-                    @click="markPaid(f, true)"
-                  >
-                    <i class="bi bi-check2"></i>
-                  </button>
-                  <button
-                    v-else
-                    class="adbl-btn adbl-btn--outline adbl-btn--sm"
-                    title="Marcar como não pago"
-                    @click="markPaid(f, false)"
-                  >
-                    <i class="bi bi-arrow-counterclockwise"></i>
-                  </button>
+                  <PaidSwitch :paid="f.paid" :show-label="false" @change="markPaid(f, $event)" />
+                  <span class="fin-status-label" :class="`fin-status-label--${financeStatus(f)}`">
+                    {{ (STATUS_META[financeStatus(f)] || STATUS_META.pendente).label }}
+                  </span>
                 </div>
               </div>
             </li>
@@ -104,9 +101,11 @@ import { ref, onMounted, computed } from 'vue';
 import Layout from '@/components/Layout.vue';
 import DefaultHeader from '@/components/DefaultHeader.vue';
 import Loader from '@/components/Loader.vue';
+import PaidSwitch from '@/components/PaidSwitch.vue';
+import FinanceAdder from '@/components/FinanceAdder.vue';
 import Swal from 'sweetalert2';
-import { getFinances, setFinancePaid } from '@/api/finance';
-import { formatBRL, formatDateBR, STATUS_META, MONTH_NAMES } from '@/utils/finance';
+import { getFinances, setFinancePaid, updateFinance } from '@/api/finance';
+import { financeStatus, formatBRL, MONTH_NAMES, STATUS_META } from '@/utils/finance';
 
 const now = new Date();
 const month = ref(now.getMonth() + 1);
@@ -116,23 +115,22 @@ const summary = ref(null);
 const loading = ref(false);
 const activeTab = ref('todos');
 
-function statusMeta(status) {
-  return STATUS_META[status] || STATUS_META.pendente;
-}
-
 const monthLabel = computed(() => `${MONTH_NAMES[month.value - 1]} ${year.value}`);
 
 const summarySum = computed(() => (summary.value && summary.value.sum) || { pago: 0, pendente: 0, atrasado: 0 });
 
 const counts = computed(() => {
   const c = { pendente: 0, atrasado: 0, pago: 0 };
-  for (const f of finances.value) c[f.status] = (c[f.status] || 0) + 1;
+  for (const f of finances.value) {
+    const status = financeStatus(f);
+    c[status] = (c[status] || 0) + 1;
+  }
   return c;
 });
 
 const visibleFinances = computed(() => {
   if (activeTab.value === 'todos') return finances.value;
-  return finances.value.filter((f) => f.status === activeTab.value);
+  return finances.value.filter((f) => financeStatus(f) === activeTab.value);
 });
 
 function toast(icon, title) {
@@ -188,7 +186,7 @@ async function markPaid(f, paid) {
     const updated = res.finance;
     if (updated) {
       const i = finances.value.findIndex((x) => x.id === updated.id);
-      if (i !== -1) finances.value.splice(i, 1, updated);
+      if (i !== -1) finances.value.splice(i, 1, { ...finances.value[i], ...updated });
     }
     // Recalcula os totais a partir da própria lista (sem novo request).
     recomputeSummary();
@@ -202,9 +200,23 @@ function recomputeSummary() {
   const sum = { pago: 0, pendente: 0, atrasado: 0 };
   for (const f of finances.value) {
     const signed = f.type === 'despesa' ? -1 : 1;
-    sum[f.status] += signed * Number(f.amount || 0);
+    sum[financeStatus(f)] += signed * Number(f.amount || 0);
   }
   summary.value = { ...(summary.value || {}), sum };
+}
+
+// Mudar o vencimento; recarrega o mês (a data pode sair do filtro / mudar a situação).
+async function onChangeDate(f, event) {
+  const date = event.target.value;
+  if (!date) return;
+  try {
+    await updateFinance(f.id, { date });
+    toast('success', 'Vencimento atualizado');
+    await load();
+  } catch (error) {
+    toast('error', 'Erro ao mudar vencimento');
+    console.error('Erro ao mudar vencimento:', error);
+  }
 }
 
 onMounted(load);

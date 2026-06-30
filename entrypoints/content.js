@@ -884,7 +884,9 @@ export default defineContentScript({
         height: '100vh',
         backgroundColor: '#ffffff',
         zIndex: '2147483647',
-        boxShadow: '-6px 0 24px rgba(0, 0, 0, 0.10)',
+        // Sem sombra: o painel deve parecer uma coluna da própria página, não algo
+        // sobreposto. A divisão fica por conta de uma borda esquerda discreta.
+        boxShadow: 'none',
         borderLeft: '1px solid #e6e8ee',
         overflow: 'hidden',
         opacity: '0',
