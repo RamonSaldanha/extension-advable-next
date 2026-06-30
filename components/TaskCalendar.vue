@@ -60,7 +60,10 @@
               <span class="task-row__title">{{ task.title }}</span>
               <span class="task-row__meta">
                 <span v-if="taskTimeLabel(task)"><i class="bi bi-clock"></i>{{ taskTimeLabel(task) }}</span>
-                <span>{{ task.extendedProps?.taskState || 'Sem estado' }}</span>
+                <span>{{ taskStateLabel(task) }}</span>
+              </span>
+              <span v-if="taskProcessLabel(task)" class="task-row__process">
+                <i class="bi bi-folder2-open"></i>{{ taskProcessLabel(task) }}
               </span>
             </span>
             <i class="bi bi-chevron-right task-row__chev"></i>
@@ -255,6 +258,19 @@ function parseDateKey(dateKey) {
 
 function isCompleted(task) {
   return !!task?.extendedProps?.completed
+}
+
+function taskStateLabel(task) {
+  return task?.extendedProps?.taskState || task?.taskState?.title || 'Sem estado'
+}
+
+function taskProcessLabel(task) {
+  const process = task?.extendedProps?.process
+  if (!process) return ''
+
+  return [process.first_person_name, process.short_process_num]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 function taskTimeLabel(task) {
@@ -488,6 +504,7 @@ defineExpose({
 .task-row__meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   color: var(--ad-muted, #8b93a3);
   font-size: 11px;
@@ -497,6 +514,18 @@ defineExpose({
   display: inline-flex;
   align-items: center;
   gap: 3px;
+}
+
+.task-row__process {
+  color: #607089;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .task-row__chev {
