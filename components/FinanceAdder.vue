@@ -48,7 +48,7 @@
 
           <div class="fin-modal__body">
             <div class="adbl-field">
-              <label class="adbl-label">Valor (R$)</label>
+              <label class="adbl-label">{{ amountLabel }}</label>
               <input
                 ref="amountInputRef"
                 class="adbl-input"
@@ -194,11 +194,15 @@ const headIcon = computed(
     'bi-plus-lg')
 );
 
+// O campo de valor é o TOTAL; cada parcela = total ÷ nº de parcelas.
+const amountLabel = computed(() => (modalMode.value === 'full' ? 'Valor total (R$)' : 'Valor (R$)'));
+
 const installmentsPreview = computed(() => {
   const n = parseInt(form.installments, 10) || 1;
-  const amount = parseBRLInput(form.amount);
-  if (n > 1 && amount > 0) {
-    return `${n}× de ${formatBRL(amount)} = ${formatBRL(amount * n)} (vencimentos mensais)`;
+  const total = parseBRLInput(form.amount);
+  if (n > 1 && total > 0) {
+    const per = Math.round((total / n) * 100) / 100;
+    return `${n}× de ${formatBRL(per)} = ${formatBRL(total)} (vencimentos mensais)`;
   }
   return '';
 });
@@ -267,21 +271,24 @@ function clearClient() {
 }
 
 async function save() {
-  const amount = parseBRLInput(form.amount);
-  if (!amount || amount <= 0) {
+  const total = parseBRLInput(form.amount);
+  if (!total || total <= 0) {
     toast('warning', 'Informe um valor válido');
     return;
   }
+  const n = modalMode.value === 'full' ? parseInt(form.installments, 10) || 1 : 1;
+  // O valor digitado é o TOTAL; divide entre as parcelas (arredonda a 2 casas).
+  const perInstallment = n > 1 ? Math.round((total / n) * 100) / 100 : total;
   const pessoaId = props.lockedPerson?.id || selectedPerson.value?.id || null;
   saving.value = true;
   try {
     await addFinance({
       description: form.description || '',
-      amount,
+      amount: perInstallment,
       date: form.date || todayISO(),
       type: form.type || 'receita',
       paid: !!form.paid,
-      installments: modalMode.value === 'full' ? parseInt(form.installments, 10) || 1 : 1,
+      installments: n,
       wallet_id: form.wallet_id || null,
       pessoa_id: pessoaId,
     });

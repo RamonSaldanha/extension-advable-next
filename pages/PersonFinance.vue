@@ -89,6 +89,9 @@
                       <i class="bi bi-trash"></i>
                     </button>
                   </div>
+                  <button class="adbl-btn adbl-btn--outline adbl-btn--sm" title="Extrato" @click="receiptFinance = f">
+                    <i class="bi bi-receipt"></i>
+                  </button>
                 </div>
               </li>
             </ul>
@@ -110,6 +113,13 @@
           Cadastrar / vincular cliente
         </router-link>
       </div>
+
+      <ReceiptModal
+        v-if="receiptFinance"
+        :finance="receiptFinance"
+        :person="person"
+        @close="receiptFinance = null"
+      />
     </div>
   </Layout>
 </template>
@@ -122,6 +132,7 @@ import DefaultHeader from '@/components/DefaultHeader.vue';
 import Loader from '@/components/Loader.vue';
 import PaidSwitch from '@/components/PaidSwitch.vue';
 import FinanceAdder from '@/components/FinanceAdder.vue';
+import ReceiptModal from '@/components/ReceiptModal.vue';
 import Swal from 'sweetalert2';
 import { getPerson } from '@/api/people';
 import { getPersonFinances, setFinancePaid, updateFinance, deleteFinance } from '@/api/finance';
@@ -136,6 +147,7 @@ const person = ref(null);
 const finances = ref([]);
 const loading = ref(false);
 const activeTab = ref('pendente');
+const receiptFinance = ref(null);
 
 const counts = computed(() => {
   const c = { pendente: 0, atrasado: 0, pago: 0 };

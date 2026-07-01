@@ -7,8 +7,8 @@
     <div class="adbl-page">
       <Loader v-if="loading" />
 
-      <!-- Sem chat selecionado -->
-      <div v-if="!newCase.external_chat_id" class="adbl-empty" style="padding-top: 56px">
+      <!-- Sem chat selecionado e sem cliente carregado (ex.: aberto por id) -->
+      <div v-if="!newCase.external_chat_id && !person" class="adbl-empty" style="padding-top: 56px">
         <i class="bi bi-chat-left-text"></i>
         <p>Navegue até um chat do WhatsApp para visualizar as informações.</p>
       </div>
@@ -261,7 +261,7 @@ import CreateCaseModal from '@/components/CreateCaseModal.vue';
 import Swal from 'sweetalert2';
 import Card from '@/components/Card.vue';
 import debounce from 'lodash.debounce';
-import { getPerson, addPeople, getAllStates, addCase, linkChat, searchPeople } from '@/api/people';
+import { getPerson, getPersonById, addPeople, getAllStates, addCase, linkChat, searchPeople } from '@/api/people';
 import { displayBR } from '@/utils/phone';
 const route = useRoute();
 const router = useRouter();
@@ -432,6 +432,21 @@ const fetchPerson = async () => {
   }
 };
 
+// Fallback: abre a ficha diretamente por id (a partir de "Clientes"), quando o
+// cliente não tem telefone/vínculo de chat que resolva por getPerson.
+const fetchPersonById = async (id) => {
+  loading.value = true;
+  try {
+    const response = await getPersonById(id);
+    person.value = response && Object.keys(response).length > 0 ? response : null;
+    if (person.value) newCase.value.person_id = person.value.id;
+  } catch (error) {
+    console.error('Erro ao buscar pessoa por id:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
 // Observar mudanças no chatId (o listener reatribui chatId.value ao trocar chat)
 watch(chatId, async (newChatId) => {
   if (newChatId) {
@@ -517,7 +532,9 @@ onMounted(async () => {
   if (q.raw || q.phone) {
     // Deep-link explícito do cluster de ícones (identidade exata do chat).
     applyChat({ chatId: q.raw || chatId.value, phone: q.phone || '', chatName: chatName.value });
-  } else {
+  } else if (!q.personId) {
+    // Só recorre ao último chat quando NÃO é uma abertura direta por cliente
+    // (senão um last_chat antigo carregaria a pessoa errada).
     const lastChat = JSON.parse(localStorage.getItem('last_chat') || 'null');
     if (lastChat?.chatId) {
       applyChat(lastChat);
@@ -527,10 +544,16 @@ onMounted(async () => {
     }
   }
 
-  if (chatId.value || rawChatId.value || searchPhone.value) {
+  if (rawChatId.value || searchPhone.value) {
     await fetchPerson();
-    await fetchStates();
   }
+
+  // Abertura direta a partir de "Clientes": carrega a ficha completa por id.
+  if (!person.value && q.personId) {
+    await fetchPersonById(q.personId);
+  }
+
+  await fetchStates();
 });
 
 // Listener para mensagens do content script (troca de conversa)

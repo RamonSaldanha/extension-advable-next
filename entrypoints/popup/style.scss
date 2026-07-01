@@ -519,11 +519,13 @@ body {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  text-decoration: none;
   transition: border-color 0.15s, color 0.15s;
 }
 .adbl-back:hover {
   border-color: var(--adbl-purple);
   color: var(--adbl-purple);
+  text-decoration: none;
 }
 .adbl-subhead__ctx {
   min-width: 0;
@@ -1150,6 +1152,21 @@ body {
 }
 .fin-status-label--atrasado {
   color: var(--ad-danger);
+}
+
+/* ---- Finanças: recibo/extrato em texto (monoespaçado, copiável) ---- */
+.fin-receipt {
+  margin: 0;
+  padding: 12px 14px;
+  background: #f4f6f9;
+  border: 1px solid var(--ad-line);
+  border-radius: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ad-ink);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* ---- Finanças: toggle "Pago" (switch + rótulo, cores sólidas) ---- */

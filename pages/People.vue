@@ -9,9 +9,9 @@
 
       <div class="ad-page-head people-head">
         <h1 class="ad-page-title">Clientes</h1>
-        <button class="adbl-btn adbl-btn--primary adbl-btn--sm" @click="toggleCreate">
-          <i class="bi" :class="creating ? 'bi-x-lg' : 'bi-plus-lg'"></i>
-          {{ creating ? 'Cancelar' : 'Novo cliente' }}
+        <button class="adbl-btn adbl-btn--primary adbl-btn--sm" @click="showCreate = true">
+          <i class="bi bi-plus-lg"></i>
+          Novo cliente
         </button>
       </div>
 
@@ -21,52 +21,6 @@
       </p>
 
       <div class="adbl-stack">
-        <!-- Cadastro do zero (sem precisar de chat ativo) -->
-        <div v-if="creating" class="adbl-card">
-          <div class="adbl-card__head">
-            <span class="adbl-card__head-icon"><i class="bi bi-person-plus"></i></span>
-            <span class="adbl-card__title">Cadastrar pessoa</span>
-          </div>
-          <div class="adbl-card__body">
-            <div class="adbl-field">
-              <label class="adbl-label">Nome</label>
-              <input class="adbl-input" type="text" v-model="newPerson.name" />
-            </div>
-            <div class="adbl-field">
-              <label class="adbl-label">WhatsApp</label>
-              <input
-                class="adbl-input"
-                type="text"
-                v-maska="'(##) #####-####'"
-                placeholder="(84) 98732-9303 — estrangeiro: +DDI..."
-                v-model="newPerson.whatsapp"
-              />
-            </div>
-            <div class="adbl-field">
-              <label class="adbl-label">Email</label>
-              <input class="adbl-input" type="email" v-model="newPerson.email" />
-            </div>
-
-            <details class="adbl-accordion">
-              <summary>Documentos</summary>
-              <div class="adbl-accordion__body">
-                <div class="adbl-field">
-                  <label class="adbl-label">CPF</label>
-                  <input class="adbl-input" type="text" v-maska="'###.###.###-##'" v-model="newPerson.cpf" />
-                </div>
-                <div class="adbl-field">
-                  <label class="adbl-label">CNPJ</label>
-                  <input class="adbl-input" type="text" v-maska="'##.###.###/####-##'" v-model="newPerson.cnpj" />
-                </div>
-              </div>
-            </details>
-
-            <button class="adbl-btn adbl-btn--primary adbl-btn--block save-btn" :disabled="saving" @click="savePerson">
-              Salvar
-            </button>
-          </div>
-        </div>
-
         <!-- Busca / listagem -->
         <div class="adbl-card">
           <div class="adbl-card__head">
@@ -82,13 +36,13 @@
             <ul class="people-list" v-if="people.length">
               <li v-for="p in people" :key="p.id" class="people-item">
                 <div class="people-item__info">
-                  <div class="people-item__name">{{ p.name }}</div>
+                  <div class="people-item__name">{{ titleCasePtBr(p.name) }}</div>
                   <div class="people-item__contact">
                     <i class="bi bi-whatsapp"></i> {{ p.whatsapp || 'sem WhatsApp' }}
                   </div>
                 </div>
-                <router-link :to="`/people/edit/${p.id}`" class="adbl-btn adbl-btn--outline adbl-btn--sm">
-                  <i class="bi bi-pencil-square"></i> Abrir
+                <router-link :to="fichaRoute(p)" class="adbl-btn adbl-btn--outline adbl-btn--sm">
+                  <i class="bi bi-person-lines-fill"></i> Abrir
                 </router-link>
               </li>
             </ul>
@@ -99,6 +53,8 @@
           </div>
         </div>
       </div>
+
+      <NewPersonModal :show="showCreate" @close="showCreate = false" @created="onCreated" />
     </div>
   </Layout>
 </template>
@@ -108,17 +64,15 @@ import { ref, onMounted, watch } from 'vue';
 import Layout from '@/components/Layout.vue';
 import DefaultHeader from '@/components/DefaultHeader.vue';
 import Loader from '@/components/Loader.vue';
-import Swal from 'sweetalert2';
+import NewPersonModal from '@/components/NewPersonModal.vue';
 import debounce from 'lodash.debounce';
-import { searchPeople, addPeople } from '@/api/people';
+import { searchPeople } from '@/api/people';
+import { titleCasePtBr } from '@/utils/text';
 
 const loading = ref(false);
-const saving = ref(false);
-const creating = ref(false);
+const showCreate = ref(false);
 const query = ref('');
 const people = ref([]);
-
-const newPerson = ref({ name: '', whatsapp: '', email: '', cpf: '', cnpj: '' });
 
 const load = async (name = '') => {
   loading.value = true;
@@ -135,29 +89,27 @@ const load = async (name = '') => {
 const debouncedLoad = debounce((q) => load(q), 400);
 watch(query, (q) => debouncedLoad(q));
 
-const toggleCreate = () => {
-  creating.value = !creating.value;
-};
+// Abre a ficha do cliente (mesma tela que o chat do WhatsApp abre). Passa a
+// identidade de chat quando existir e um `personId` como fallback robusto para
+// clientes sem telefone/vínculo.
+function fichaRoute(p) {
+  return {
+    name: 'Person',
+    params: {
+      chatId: p.whatsapp_chat_id || p.whatsapp || String(p.id),
+      chatName: p.name || 'Cliente',
+    },
+    query: {
+      raw: p.whatsapp_chat_id || '',
+      phone: p.whatsapp || '',
+      personId: p.id,
+    },
+  };
+}
 
-const savePerson = async () => {
-  if (!newPerson.value.name) {
-    Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Informe o nome', showConfirmButton: false, timer: 2500 });
-    return;
-  }
-  saving.value = true;
-  try {
-    await addPeople(newPerson.value);
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Cliente cadastrado', showConfirmButton: false, timer: 2500, timerProgressBar: true });
-    newPerson.value = { name: '', whatsapp: '', email: '', cpf: '', cnpj: '' };
-    creating.value = false;
-    await load(query.value);
-  } catch (error) {
-    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao cadastrar', showConfirmButton: false, timer: 3000 });
-    console.error('Erro ao salvar pessoa:', error);
-  } finally {
-    saving.value = false;
-  }
-};
+function onCreated() {
+  load(query.value);
+}
 
 onMounted(() => load());
 </script>
@@ -188,10 +140,6 @@ onMounted(() => load());
 
 .people-search {
   margin-bottom: 12px;
-}
-
-.save-btn {
-  margin-top: 14px;
 }
 
 .people-list {

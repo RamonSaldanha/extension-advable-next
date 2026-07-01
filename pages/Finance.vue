@@ -59,7 +59,7 @@
           <ul v-if="visibleFinances.length" class="fin-list">
             <li v-for="f in visibleFinances" :key="f.id" class="fin-row">
               <div class="fin-row__info">
-                <div class="fin-row__desc">{{ f.person ? f.person.name : 'Sem cliente' }}</div>
+                <div class="fin-row__desc">{{ f.person ? titleCasePtBr(f.person.name) : 'Sem cliente' }}</div>
                 <div class="fin-row__meta">
                   <span class="fin-sub">{{ f.description || 'Pagamento' }}</span>
                   <input
@@ -82,6 +82,9 @@
                     {{ (STATUS_META[financeStatus(f)] || STATUS_META.pendente).label }}
                   </span>
                 </div>
+                <button class="adbl-btn adbl-btn--outline adbl-btn--sm" title="Extrato" @click="receiptFinance = f">
+                  <i class="bi bi-receipt"></i>
+                </button>
               </div>
             </li>
           </ul>
@@ -92,6 +95,13 @@
           </div>
         </div>
       </div>
+
+      <ReceiptModal
+        v-if="receiptFinance"
+        :finance="receiptFinance"
+        :person="receiptFinance.person"
+        @close="receiptFinance = null"
+      />
     </div>
   </Layout>
 </template>
@@ -103,9 +113,11 @@ import DefaultHeader from '@/components/DefaultHeader.vue';
 import Loader from '@/components/Loader.vue';
 import PaidSwitch from '@/components/PaidSwitch.vue';
 import FinanceAdder from '@/components/FinanceAdder.vue';
+import ReceiptModal from '@/components/ReceiptModal.vue';
 import Swal from 'sweetalert2';
 import { getFinances, setFinancePaid, updateFinance } from '@/api/finance';
 import { financeStatus, formatBRL, MONTH_NAMES, STATUS_META } from '@/utils/finance';
+import { titleCasePtBr } from '@/utils/text';
 
 const now = new Date();
 const month = ref(now.getMonth() + 1);
@@ -114,6 +126,7 @@ const finances = ref([]);
 const summary = ref(null);
 const loading = ref(false);
 const activeTab = ref('todos');
+const receiptFinance = ref(null);
 
 const monthLabel = computed(() => `${MONTH_NAMES[month.value - 1]} ${year.value}`);
 
